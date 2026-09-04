@@ -10,7 +10,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" />
 
 <style>
-  /* standalone reset (the claude.ai artifact viewer normally supplies this) */
   html,body{margin:0}
   *,*::before,*::after{box-sizing:border-box}
   img{max-width:100%}
@@ -345,9 +344,14 @@
   #mapSvg text { font-family: var(--font-display); font-weight: 800; }
   .mapbot { flex: none; padding: 8px 16px max(14px, env(safe-area-inset-bottom)); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .maphint { font-size: .8rem; color: #C9B79A; min-height: 1.1em; max-width: 100%; margin: 0; }
+  .savenote { font-size: .66rem; color: #7F9E6A; max-width: 40ch; margin: 0; line-height: 1.45; }
   .linkbtn { background: none; border: none; color: #C9B79A; font: inherit; font-size: .72rem; text-decoration: underline; opacity: .7; cursor: pointer; padding: 4px; margin-top: 2px; }
   .linkbtn:hover { opacity: 1; }
   #saveCodeIn { width: min(88vw, 360px); font: 600 .82rem ui-monospace, Menlo, monospace; text-align: center; padding: 9px 10px; border-radius: 10px; border: 2px solid #6B5844; background: #201812; color: #F2E4C6; }
+  #saveCodeIn[placeholder] { text-transform: uppercase; }
+  #saveCodeMine { font-family: var(--font-body); color: #E7DAC0; font-size: .95rem; }
+  #saveCodeMine b { font: 800 1.35rem/1 ui-monospace, Menlo, monospace; letter-spacing: .18em; color: #FFE3B6; }
+  #saveCodeMine[hidden] { display: none; }
   .confirmrow.overlay {
     position: absolute; inset: 0; z-index: 3;
     background: rgba(8, 5, 3, .84);
@@ -404,8 +408,12 @@
   .menu-actions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: 100%; max-width: 300px; }
   .menu-actions[hidden] { display: none; }
   .menu-actions > .btn { width: 100%; }
-  #friendsBtn { background: rgba(247, 231, 201, .08); box-shadow: inset 0 0 0 2px rgba(247, 231, 201, .3); }
-  #friendsBtn:active { transform: translateY(3px); }
+  #friendsBtn, #menuMain.has-continue #playBtn {
+    background: rgba(247, 231, 201, .08);
+    box-shadow: inset 0 0 0 2px rgba(247, 231, 201, .3);
+  }
+  #friendsBtn:active, #menuMain.has-continue #playBtn:active { transform: translateY(3px); box-shadow: inset 0 0 0 2px rgba(247, 231, 201, .3); }
+  #menuMain.has-continue #playBtn { font-size: 1.05rem; padding: 12px 30px 13px; }
   .mpback { align-self: flex-start; margin: -2px 0 2px; padding: 4px 2px; }
   .mp-block {
     width: 100%; display: flex; flex-direction: column; gap: 8px;
@@ -589,6 +597,7 @@
       </div>
 
       <div class="menu-actions" id="menuMain">
+        <button class="btn big" id="continueBtn" hidden>&#9654;&nbsp; Weiterspielen</button>
         <button class="btn big" id="playBtn">Abenteuer</button>
         <button class="btn big" id="friendsBtn" hidden>Mit Freunden spielen</button>
       </div>
@@ -635,7 +644,8 @@
       <div class="mapscroll" id="mapScroll"><div id="mapSvg"></div></div>
       <div class="mapbot">
         <p class="maphint" id="mapHint">Tippe ein freies Level an.</p>
-        <button class="linkbtn" id="saveCodeBtn">Spielstand-Code</button>
+        <p class="savenote" id="saveNote">&#10003; Fortschritt wird automatisch gespeichert.</p>
+        <button class="linkbtn" id="saveCodeBtn">Spielstand &amp; Ger&auml;t wechseln</button>
       </div>
       <div class="confirmrow overlay" id="mapConfirm" hidden>
         <span>Wirklich ALLES zur&uuml;cksetzen? Beide Level-St&auml;nde &amp; Dinos &mdash; im Koop auch beim Partner.</span>
@@ -645,10 +655,11 @@
         </div>
       </div>
       <div class="confirmrow overlay" id="saveCodeBox" hidden>
-        <span>Falls dein Browser den Fortschritt beim Neuladen vergisst: <b>Code kopieren</b> &mdash; nach dem Neuladen hier einf&uuml;gen und &bdquo;Laden&ldquo;.</span>
-        <input type="text" id="saveCodeIn" spellcheck="false" autocomplete="off" autocapitalize="off" />
+        <span id="saveCodeMsg">&hellip;</span>
+        <div id="saveCodeMine" hidden>Dein Code: <b id="saveCodeVal">&mdash;</b></div>
+        <input type="text" id="saveCodeIn" placeholder="Code vom anderen Ger&auml;t" spellcheck="false" autocomplete="off" autocapitalize="characters" />
         <div class="minirow">
-          <button class="btn" id="saveCodeCopy">Kopieren</button>
+          <button class="btn" id="saveCodeCopy">Meinen Code kopieren</button>
           <button class="btn" id="saveCodeApply">Laden</button>
           <button class="btn ghost" id="saveCodeClose">Schlie&szlig;en</button>
         </div>
@@ -857,6 +868,8 @@
     _prefs[k] = v;
     _lsSet(k, v); _ssSet(k, v);
     _nameSet(_prefs);
+    // mirror progress changes to the cloud slot (debounced inside cloudPush)
+    if (k.indexOf("rexi_") === 0 && k !== "rexi_pcode" && k !== "rexi_rz" && typeof cloudPush === "function") cloudPush();
   }
   // one last flush on the way out — refreshes and tab-closes both fire this
   window.addEventListener("pagehide", function () { _nameSet(_prefs); });
@@ -1511,6 +1524,10 @@
     function bone(x, y) { bones.push({ x: x, y: y, r: 12, t: rnd() * 6, taken: false }); }
     function raptor(x, lo, hi) { foes.push(mkFoe("raptor", x, lo, hi, GY - 30, idx)); }
     function ptero(x, lo, hi, y) { foes.push(mkFoe("ptero", x, lo, hi, y, idx)); }
+    // co-op gate helpers: a plate is a pure trigger rect (never collidable); gwall is a real
+    // solid door whose `.solid` gets toggled at runtime by updateGates() to open/close it
+    function plate(x, y, w, h) { return { x: x, y: y, w: w || 48, h: h || 10 }; }
+    function gwall(x, y, w, h) { var g = { x: x, y: y, w: w, h: h, solid: true, gate: true }; plats.push(g); return g; }
 
     var x = 640;
     // each world has its own layout language
@@ -1540,30 +1557,45 @@
       pool = ["pillars", "gaps", "gauntlet", "cave", "steps", "dip"];
       hiddenSet = ["dip", "pillars", "canopy"];
       gapBase = 112; ledgeHi = 126;
-    } else if (idx === 5) {     // Knochenschlucht — vertical serpentines, cross-tunnels, deep shafts
+    } else if (idx === 5) {     // Knochenschlucht — vertical serpentines, cross-tunnels, deep shafts, LOTS of caves
       rooms = 22;
-      pool = ["switchback", "shafts", "overpass", "undertunnel", "cave", "gauntlet", "tower", "pillars"];
-      hiddenSet = ["shafts", "undertunnel", "canopy"];
+      pool = ["switchback", "shafts", "shafts", "overpass", "undertunnel", "undertunnel", "cave", "cave", "gauntlet", "tower", "pillars"];
+      hiddenSet = ["shafts", "undertunnel", "cave"];
       gapBase = 116; ledgeHi = 150;
-    } else if (idx === 6) {     // Aschenpass — narrow ridges, big drops, climbs, patrols
+    } else if (idx === 6) {     // Aschenpass — narrow ridges, big drops, climbs, patrols, deep underground stretches
       rooms = 24;
-      pool = ["crevasse", "switchback", "pillars", "gauntlet", "tower", "overpass", "steps"];
-      hiddenSet = ["high", "tower", "shafts"];
+      pool = ["crevasse", "switchback", "pillars", "gauntlet", "tower", "overpass", "steps", "undertunnel", "undertunnel", "cave", "shafts"];
+      hiddenSet = ["undertunnel", "shafts", "cave"];
       gapBase = 124; ledgeHi = 162;
-    } else {                    // Feuergipfel — the finale: brutal mix of everything, incl. underground
+    } else {                    // Feuergipfel — the finale: brutal mix of everything, deepest & most underground
       rooms = 26;
-      pool = ["crevasse", "shafts", "undertunnel", "switchback", "pillars", "cave", "gauntlet", "overpass"];
-      hiddenSet = ["shafts", "undertunnel", "pillars"];
+      pool = ["crevasse", "shafts", "shafts", "undertunnel", "undertunnel", "switchback", "pillars", "cave", "cave", "gauntlet", "overpass"];
+      hiddenSet = ["shafts", "undertunnel", "cave"];
       gapBase = 130; ledgeHi = 168;
+    }
+    // ---- co-op-only "gates": 1-2 team obstacles per level, spread across the run ----
+    var gateRoomKinds = [];
+    if (NET.on) {
+      if (idx === 5) gateRoomKinds = [{ frac: 0.55, kind: "gateSwitch" }];
+      else if (idx === 6) gateRoomKinds = [{ frac: 0.32, kind: "gateSwitch" }, { frac: 0.72, kind: "gateBridge" }];
+      else if (idx === 7) gateRoomKinds = [{ frac: 0.38, kind: "gateSwitch" }, { frac: 0.78, kind: "gateTimer" }];
     }
     var boneRoom = rooms - 4;
     while (boneRoom > 3 && boneRoom % 3 === 0) boneRoom--;
+    var gateRoomMap = {};    // room-index -> forced gate kind (resolved from the fractions above)
+    for (var gk = 0; gk < gateRoomKinds.length; gk++) {
+      var gr = Math.max(2, Math.min(rooms - 3, Math.round(gateRoomKinds[gk].frac * rooms)));
+      while (gr === boneRoom || gateRoomMap[gr]) gr++;
+      gateRoomMap[gr] = gateRoomKinds[gk].kind;
+    }
+    var gates = [];    // co-op team obstacles built into specific rooms below
 
     var cpCand = [];    // safe (full-ground) spots where a checkpoint flag can stand
     for (var r = 0; r < rooms; r++) {
       var startX = x;
       var forced = (r > 1 && r % 3 === 0);
       var kind = forced ? hiddenSet[Math.floor(r / 3) % hiddenSet.length] : pick(pool);
+      if (gateRoomMap[r]) kind = gateRoomMap[r];
       if (r === boneRoom && kind !== "run" && kind !== "gauntlet") kind = "run";
       if (r > 1 && r < rooms - 2) cpCand.push(startX + 40);   // every room starts on solid ground
 
@@ -1825,6 +1857,60 @@
         x += tw;
         plats.push(seg(x + 14, R(220, 300))); x += 14 + R(220, 300);
       }
+      // ---- CO-OP GATE: two (or three) pressure plates, held down at once, open a stone door for good ----
+      else if (kind === "gateSwitch") {
+        var sw2 = R(440, 540);
+        plats.push(seg(x, sw2));
+        var need3 = idx >= 7;
+        var gateX = x + sw2 * 0.62;
+        var wallP = gwall(gateX, GY - 168, 30, 168);
+        var plateList = [];
+        plateList.push(plate(x + sw2 * 0.16, GY - 6, 48, 10));                       // plate 1: ground level
+        var ledgeY = GY - (idx >= 6 ? 128 : 88);
+        plats.push(led(x + sw2 * 0.32, ledgeY, 96));
+        plateList.push(plate(x + sw2 * 0.32 + 24, ledgeY - 6, 48, 10));              // plate 2: up on a ledge
+        if (need3) {
+          plats.push(led(x + sw2 * 0.47, GY - 196, 90));
+          plateList.push(plate(x + sw2 * 0.47 + 22, GY - 196 - 6, 48, 10));          // plate 3 (only needed with 3 players)
+        }
+        gates.push({ idx: gates.length, type: "switch", wallPlat: wallP, plates: plateList, plateLit: [], open: false, holdT: 0, openAmt: 0, slideT: 0 });
+        meatLine(x + sw2 * 0.16 - 30, GY - 30, 3, 20, 0);
+        if (idx >= 6) raptor(x + sw2 * 0.35, x + 40, x + sw2 - 110);
+        meatLine(gateX + 60, GY - 40, 3, 26, 0);
+        bone(gateX + 120, GY - 30);
+        x += sw2;
+      }
+      // ---- CO-OP GATE: one holds a plate to keep a stepping-stone bridge in place, the other crosses a pit ----
+      else if (kind === "gateBridge") {
+        var ba = R(150, 200); plats.push(seg(x, ba)); x += ba;
+        var plateXY = plate(x - 56, GY - 6, 50, 10);
+        var gap = R(190, 250);
+        var stepN = 4, stepW = gap / stepN, steps = [];
+        for (var si = 0; si < stepN; si++) steps.push({ x: x + si * stepW, y: GY - 8, w: stepW + 6, h: 12, solid: false, gate: true, bridgeStep: true });
+        gates.push({ idx: gates.length, type: "bridge", plate: plateXY, steps: steps, inserted: false, riseAmt: 0 });
+        if (idx >= 6) ptero(x - ba * 0.5, x - ba + 20, x + gap - 20, GY - R(120, 170));
+        x += gap;
+        plats.push(seg(x, R(220, 300)));
+        meatLine(x + 20, GY - 30, 3, 22, 0);
+        bone(x + 90, GY - 30);
+        x += R(220, 300);
+      }
+      // ---- CO-OP GATE: a lever far from the door — pull it, someone else has to already be waiting there ----
+      else if (kind === "gateTimer") {
+        var tw2 = R(500, 620);
+        plats.push(seg(x, tw2));
+        var leverX = x + tw2 * 0.16;
+        var leverRect = plate(leverX, GY - 26, 40, 26);
+        var gateX2 = x + tw2 * 0.66;
+        var wallP2 = gwall(gateX2, GY - 160, 28, 160);
+        gates.push({ idx: gates.length, type: "timer", wallPlat: wallP2, lever: leverRect, openT: 0, cd: 0, duration: idx >= 7 ? 150 : 200 });
+        raptor(x + tw2 * 0.4, x + 40, x + tw2 - 40);
+        if (idx >= 7) raptor(x + tw2 * 0.55, x + 40, x + tw2 - 40);
+        meatLine(leverX + 8, GY - 44, 2, 24, 0);
+        meatLine(gateX2 + 50, GY - 40, 3, 26, 0);
+        bone(gateX2 + 130, GY - 30);
+        x += tw2;
+      }
 
       if (r === boneRoom) bone(startX + 130, GY - 46);
     }
@@ -1862,7 +1948,7 @@
 
     return {
       idx: idx, name: LEVELS[idx].name, plats: plats, meats: meats, bones: bones, foes: foes,
-      checkpoints: checkpoints, deathY: deathY,
+      checkpoints: checkpoints, deathY: deathY, gates: gates,
       arenaX: arenaX, endX: arenaX + ARENA_W, feastX: feastX, doorX: doorX
     };
   }
@@ -2079,6 +2165,23 @@
   }
 
   document.getElementById("playBtn").addEventListener("click", function () { openMap("sp"); });
+  // resume the solo adventure straight into your furthest level
+  function resumeAdventure() {
+    G.mode = "sp"; NET.on = false; NET.role = "solo"; G._spectator = false; NET._mpPanel = false;
+    audio.resume();
+    if (!availChars()[NET.charType]) NET.charType = "rex";
+    G.totalMeat = 0;
+    var i = Math.max(0, Math.min(LEVEL_COUNT - 1, progOf("sp") - 1));
+    beginLevel(i);
+  }
+  function syncContinueBtn() {
+    var b = document.getElementById("continueBtn"), mm = document.getElementById("menuMain");
+    if (!b) return;
+    var p = progOf("sp");
+    if (p > 1) { b.hidden = false; b.textContent = "▶ Weiterspielen · Level " + p; if (mm) mm.classList.add("has-continue"); }
+    else { b.hidden = true; if (mm) mm.classList.remove("has-continue"); }
+  }
+  if (document.getElementById("continueBtn")) document.getElementById("continueBtn").addEventListener("click", resumeAdventure);
   document.getElementById("nextBtn").addEventListener("click", nextLevel);
   var _clearMapBtn = document.getElementById("clearMapBtn");
   if (_clearMapBtn) _clearMapBtn.addEventListener("click", function () { openMap(G.mode || "sp"); });
@@ -2134,6 +2237,17 @@
   //  presence"  auf dem Channel  rexi:*  darf. Auf claude.ai bleibt das leer –
   //  da läuft der Mehrspieler über claude selbst.
   var ABLY_KEY = "wofpCA.zf2wxQ:Lk8FQ4hr2DGu8NN5AT6d3VMAiX9ucyC1OJwx-5P-9RE";
+  //
+  //  ── CLOUD-SPEICHER (optional) ────────────────────────────────────────────────
+  //  Damit der Spielstand auch nach "Browserdaten löschen" oder auf einem anderen
+  //  Gerät da ist. Jeder Spieler bekommt automatisch einen kurzen Code; auf einem
+  //  anderen Gerät gibt man den Code ein und spielt weiter.
+  //  Einrichten (kostenlos, ~2 Min):
+  //   1) console.firebase.google.com → Projekt anlegen
+  //   2) Build → Realtime Database → Datenbank erstellen → im TESTMODUS starten
+  //      (oder Regeln:  { "rules": { "saves": { "$c": { ".read": true, ".write": true } } } } )
+  //   3) Die Datenbank-URL kopieren  (…-default-rtdb.firebaseio.com)  und hier einsetzen:
+  var CLOUD_URL = "";
   // ─────────────────────────────────────────────────────────────────────────────
 
   var NET = {
@@ -2318,6 +2432,7 @@
   function netCount() { return netLivePeers().length; }
 
   function refreshLobby() {
+    if (typeof syncContinueBtn === "function") syncContinueBtn();
     if (!elCoopBtn) return;
     var menuMain = document.getElementById("menuMain");
     var mpBlock = document.getElementById("mpBlock");
@@ -2712,6 +2827,90 @@
       if (Math.abs((p.x + p.w / 2) - cps[k].x) < 46 && (p.y + p.h) > GROUND_Y - 150) reachCheckpoint(k);
     }
   }
+
+  // ---- co-op team gates: purely local — every client reads the SAME broadcast positions
+  // (self + live peers) each frame and evaluates independently, so nothing new needs syncing ----
+  function updateGates() {
+    var gs = G.level && G.level.gates;
+    if (!NET.on || !gs || !gs.length) return;
+    var p = G.player;
+    var bodies = [];
+    if (p && !p.ghost && !p.out) bodies.push({ x: p.x, y: p.y, w: p.w, h: p.h });
+    netLivePeers().forEach(function (pe) {
+      if (pe.role === "screen" || pe.lvl !== G.levelIndex || !pe.d) return;
+      if (pe.d.dead || pe.d.gh || pe.d.out) return;
+      bodies.push({ x: pe.d.x, y: pe.d.y, w: 42, h: 48 });
+    });
+
+    for (var i = 0; i < gs.length; i++) {
+      var g = gs[i];
+
+      if (g.type === "switch") {
+        if (!g.open) {
+          var usedBody = {}, coveredCount = 0, lit = [];
+          for (var pI = 0; pI < g.plates.length; pI++) {
+            var plateHit = -1;
+            for (var bI = 0; bI < bodies.length; bI++) {
+              if (usedBody[bI]) continue;
+              if (aabb(bodies[bI], g.plates[pI])) { plateHit = bI; break; }
+            }
+            lit[pI] = plateHit >= 0;
+            if (plateHit >= 0) { usedBody[plateHit] = true; coveredCount++; }
+          }
+          g.plateLit = lit;
+          var need = Math.min(g.plates.length, Math.max(2, bodies.length));
+          if (coveredCount >= need) {
+            g.holdT = (g.holdT || 0) + 1;
+            if (g.holdT > 26) {
+              g.open = true; g.wallPlat.solid = false;
+              burst(g.wallPlat.x + g.wallPlat.w / 2, g.wallPlat.y + g.wallPlat.h * 0.6, "#FFD873", 22, 2.2);
+              floatText(g.wallPlat.x + g.wallPlat.w / 2, g.wallPlat.y - 20, "Tor offen!", "#FFE7A6");
+              audio.power(); shake = REDUCED ? 0 : 6;
+            }
+          } else {
+            g.holdT = Math.max(0, (g.holdT || 0) - 3);
+          }
+          g.openAmt = Math.min(1, (g.holdT || 0) / 26);
+        }
+        if (g.open) g.slideT = Math.min(20, (g.slideT || 0) + 1);
+      }
+
+      else if (g.type === "bridge") {
+        var held = bodies.some(function (b) { return aabb(b, g.plate); });
+        g.riseAmt += ((held ? 1 : 0) - g.riseAmt) * 0.18;
+        if (held && !g.inserted) {
+          g.inserted = true;
+          for (var s1 = 0; s1 < g.steps.length; s1++) G.level.plats.push(g.steps[s1]);
+          audio.hop();
+        } else if (!held && g.inserted) {
+          g.inserted = false;
+          for (var s2 = 0; s2 < g.steps.length; s2++) {
+            var ix = G.level.plats.indexOf(g.steps[s2]);
+            if (ix >= 0) G.level.plats.splice(ix, 1);
+          }
+        }
+      }
+
+      else if (g.type === "timer") {
+        if (g.openT > 0) {
+          g.openT--; g.wallPlat.solid = false;
+          if (g.openT <= 0) {
+            var stillIn = bodies.some(function (b) { return aabb(b, g.wallPlat); });
+            if (stillIn) g.openT = 1; else g.wallPlat.solid = true;
+          }
+        } else {
+          if (g.cd > 0) g.cd--;
+          var touching = bodies.some(function (b) { return aabb(b, g.lever); });
+          if (touching && g.cd <= 0) {
+            g.openT = g.duration || 200; g.cd = 40; g.wallPlat.solid = false;
+            audio.hop();
+            burst(g.lever.x + g.lever.w / 2, g.lever.y - 6, "#FFD873", 14, 1.6);
+            floatText(g.lever.x + g.lever.w / 2, g.lever.y - 22, "Tor offen — LAUFT!", "#FFE7A6");
+          }
+        }
+      }
+    }
+  }
   // centroid of everyone still actively playing (co-op) — where a ghost floats
   function ghostAnchor() {
     var sx = 0, sy = 0, n = 0;
@@ -3031,22 +3230,16 @@
     toast("Fortschritt zurückgesetzt");
   }
 
-  // ---- save code: copy/paste fallback for browsers that wipe storage on refresh ----
-  function makeSaveCode() {
-    var d = {
+  // ---- progress snapshot / restore (shared by the save-code AND the cloud save) ----
+  function progSnapshot() {
+    return {
       sp: loadPref("rexi_sp", "1"), co: loadPref("rexi_co", "1"),
       su: loadPref("rexi_sp_unlocks", ""), cu: loadPref("rexi_co_unlocks", ""),
       u: loadPref("rexi_unlocks", ""),
       nm: NET.name, cl: NET.colorIdx, ch: NET.charType
     };
-    try { return "REXI1-" + btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/=+$/, ""); } catch (e) { return ""; }
   }
-  function applySaveCode(code) {
-    code = (code || "").trim();
-    var m = code.indexOf("REXI1-");
-    if (m < 0) return false;
-    var d;
-    try { d = JSON.parse(decodeURIComponent(escape(atob(code.slice(m + 6))))); } catch (e) { return false; }
+  function progRestore(d) {
     if (!d || typeof d !== "object") return false;
     if (d.sp) savePref("rexi_sp", String(d.sp));
     if (d.co) savePref("rexi_co", String(d.co));
@@ -3058,37 +3251,128 @@
     if (d.ch) { NET.charType = String(d.ch); savePref("rexi_char", NET.charType); }
     return true;
   }
+
+  // ---- cloud save: a short player code = your save slot on a tiny Firebase DB ----
+  function cloudOn() { return typeof CLOUD_URL === "string" && /^https?:\/\//.test(CLOUD_URL); }
+  function cloudBase() { return CLOUD_URL.replace(/\/+$/, ""); }
+  function newPlayerCode() {
+    var A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", s = "";
+    for (var i = 0; i < 8; i++) s += A[Math.floor(Math.random() * A.length)];
+    return s;
+  }
+  function myPlayerCode() {
+    var c = loadPref("rexi_pcode", "");
+    if (!c) { c = newPlayerCode(); savePref("rexi_pcode", c); }
+    return c;
+  }
+  var _cloudT = 0;
+  function cloudPush() {
+    if (!cloudOn()) return;
+    clearTimeout(_cloudT);
+    _cloudT = setTimeout(function () {
+      var code = myPlayerCode();
+      var d = progSnapshot(); d.v = 1; d.t = Date.now();
+      try {
+        fetch(cloudBase() + "/saves/" + code + ".json", {
+          method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d)
+        }).catch(function () { });
+      } catch (e) { }
+    }, 1400);
+  }
+  function cloudPull(code, cb) {
+    if (!cloudOn()) { if (cb) cb(false); return; }
+    code = String(code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (code.length < 4) { if (cb) cb(false); return; }
+    try {
+      fetch(cloudBase() + "/saves/" + code + ".json")
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (d && progRestore(d)) {
+            savePref("rexi_pcode", code);   // this device now uses that slot
+            if (typeof buildMapNodes === "function" && G.state === "map") buildMapNodes();
+            if (typeof refreshLobby === "function") refreshLobby();
+            if (cb) cb(true);
+          } else if (cb) cb(false);
+        })
+        .catch(function () { if (cb) cb(false); });
+    } catch (e) { if (cb) cb(false); }
+  }
+  // on boot: pull the latest for our own slot (another device may have advanced it).
+  // progRestore() only ever moves counters FORWARD, so pulling an older copy is harmless.
+  (function cloudBoot() {
+    if (!cloudOn()) return;
+    var have = loadPref("rexi_pcode", "");
+    if (!have) { myPlayerCode(); cloudPush(); return; }
+    cloudPull(have);
+  })();
+
+  // ---- save code: copy/paste fallback for browsers that wipe storage ----
+  function makeSaveCode() {
+    try { return "REXI1-" + btoa(unescape(encodeURIComponent(JSON.stringify(progSnapshot())))).replace(/=+$/, ""); } catch (e) { return ""; }
+  }
+  function applySaveCode(code) {
+    code = (code || "").trim();
+    var m = code.indexOf("REXI1-");
+    if (m < 0) return false;
+    var d;
+    try { d = JSON.parse(decodeURIComponent(escape(atob(code.slice(m + 6))))); } catch (e) { return false; }
+    return progRestore(d);
+  }
   (function wireSaveCode() {
     var box = document.getElementById("saveCodeBox");
     var inp = document.getElementById("saveCodeIn");
     var btn = document.getElementById("saveCodeBtn");
-    if (btn) btn.addEventListener("click", function () {
-      if (inp) { inp.value = makeSaveCode(); }
+    var msg = document.getElementById("saveCodeMsg");
+    var mine = document.getElementById("saveCodeMine");
+    var mineVal = document.getElementById("saveCodeVal");
+    var note = document.getElementById("saveNote");
+    if (note) note.textContent = cloudOn()
+      ? "✓ Automatisch gespeichert — online. Auf anderem Gerät mit deinem Code weiterspielen."
+      : "✓ Fortschritt wird automatisch auf diesem Gerät gespeichert.";
+
+    function copyStr() { return cloudOn() ? myPlayerCode() : makeSaveCode(); }
+    function open() {
+      if (cloudOn()) {
+        if (msg) msg.textContent = "Dein Spielstand liegt online. Gib diesen Code auf einem anderen Gerät ein, um dort weiterzuspielen — oder trag hier einen Code ein, um dessen Stand zu laden.";
+        if (mine) mine.hidden = false;
+        if (mineVal) mineVal.textContent = myPlayerCode();
+      } else {
+        if (msg) msg.textContent = "Falls dein Browser den Fortschritt vergisst: „Meinen Code kopieren“ und sicher aufbewahren — später hier einfügen und „Laden“.";
+        if (mine) mine.hidden = true;
+        if (inp) inp.value = makeSaveCode();
+      }
       if (box) box.hidden = false;
-      if (inp) { inp.focus(); inp.select(); }
-    });
+      if (inp && !cloudOn()) { inp.focus(); inp.select(); }
+    }
+    if (btn) btn.addEventListener("click", open);
     var cl = document.getElementById("saveCodeClose");
     if (cl) cl.addEventListener("click", function () { if (box) box.hidden = true; });
+
     var cp = document.getElementById("saveCodeCopy");
     if (cp) cp.addEventListener("click", function () {
-      if (!inp) return;
-      inp.value = makeSaveCode();
-      inp.focus(); inp.select();
+      var s = copyStr();
       var ok = false;
-      try { ok = document.execCommand("copy"); } catch (e) { }
-      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(inp.value).then(function () { }, function () { }); ok = true; }
-      toast(ok ? "Code kopiert" : "Code markiert — jetzt kopieren");
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(s); ok = true; }
+      else if (inp) { inp.value = s; inp.focus(); inp.select(); try { ok = document.execCommand("copy"); } catch (e) { } }
+      toast(ok ? "Code kopiert: " + s : "Dein Code: " + s);
     });
+
     var ap = document.getElementById("saveCodeApply");
     if (ap) ap.addEventListener("click", function () {
-      if (!inp) return;
-      if (applySaveCode(inp.value)) {
+      var val = (inp && inp.value || "").trim();
+      if (!val) { toast("Erst den Code vom anderen Gerät eintippen"); return; }
+      if (cloudOn() && val.indexOf("REXI1-") < 0) {
+        cloudPull(val, function (ok) {
+          if (ok) { toast("Spielstand geladen!"); if (box) box.hidden = true; if (typeof buildMapNodes === "function") buildMapNodes(); }
+          else toast("Kein Spielstand für diesen Code");
+        });
+        return;
+      }
+      if (applySaveCode(val)) {
         toast("Spielstand geladen!");
         if (box) box.hidden = true;
         if (typeof buildMapNodes === "function") buildMapNodes();
-      } else {
-        toast("Code nicht erkannt");
-      }
+      } else toast("Code nicht erkannt");
     });
   })();
 
@@ -3587,6 +3871,7 @@
     tickHealBank();
     checkpointTouch(p);
     checkTeamDown();
+    updateGates();
 
     var dir = p.koT > 0 ? 0 : (anyKey(RIGHT_C) ? 1 : 0) - (anyKey(LEFT_C) ? 1 : 0);
     if (dir !== 0) { p.vx += dir * ACCEL; if (p.swing <= 6) p.facing = dir; }
@@ -4834,6 +5119,7 @@
     ctx.save();
     ctx.translate(-cx, -cy);
     drawPlatforms(cx, cy);
+    drawGates();
     drawCheckpoints();
     drawCollectibles();
     if (G.state !== "boss" && !G.spino) drawArenaGate();
@@ -5206,6 +5492,7 @@
     for (var i = 0; i < list.length; i++) {
       var pl = list[i];
       if (pl.x - cx > VIEW_W + 80 || pl.x + pl.w - cx < -80) continue;
+      if (pl.gate) continue;   // co-op gate doors / bridge steps — drawn separately by drawGates()
       if (pl.slab) {
         // a thin solid rock slab (tunnel ceiling / overhang) — drawn as itself, not full-depth earth
         ctx.fillStyle = P.earth;
@@ -5313,6 +5600,69 @@
     }
     ctx.fillStyle = "#7DC85C"; ctx.beginPath(); ctx.ellipse(0, -12, 4, 6, 0, 0, 7); ctx.fill();
     ctx.restore();
+  }
+  // co-op team gates: stone doors, pressure plates, a lever, a stepping-stone bridge
+  function drawGates() {
+    var gs = G.level && G.level.gates;
+    if (!gs || !gs.length) return;
+    for (var i = 0; i < gs.length; i++) {
+      var g = gs[i];
+      if (g.type === "switch" || g.type === "timer") drawGateDoor(g.wallPlat, g.type === "switch" ? g.openAmt : (g.openT > 0 ? 1 : 0), g.type === "switch" ? g.slideT : (g.openT > 0 ? 20 : 0));
+      if (g.type === "switch") for (var pI = 0; pI < g.plates.length; pI++) drawGatePlate(g.plates[pI], g.open || (g.plateLit && g.plateLit[pI]));
+      if (g.type === "timer") { drawGateLever(g.lever, g.openT > 0); }
+      if (g.type === "bridge") { drawGatePlate(g.plate, g.inserted); drawGateBridge(g); }
+    }
+  }
+  function drawGateDoor(wp, amt, slideT) {
+    if (wp.x - cxCache > VIEW_W + 60 || wp.x + wp.w - cxCache < -60) return;
+    var slide = Math.min(1, (slideT || 0) / 20);
+    var h = wp.h * (1 - slide * 0.94);           // slams down into the ground once opened
+    var y = wp.y + (wp.h - h);
+    ctx.save();
+    ctx.fillStyle = "#6B4A32"; rr(wp.x, y, wp.w, h, 5); ctx.fill();
+    var glow = amt || 0;
+    ctx.fillStyle = "rgba(255,216,115," + (0.15 + glow * 0.55) + ")";
+    rr(wp.x + 4, y + 4, wp.w - 8, Math.max(0, h - 8), 3); ctx.fill();
+    ctx.strokeStyle = "rgba(30,18,10,.5)"; ctx.lineWidth = 2;
+    for (var seam = wp.x + 8; seam < wp.x + wp.w - 6; seam += 10) { ctx.beginPath(); ctx.moveTo(seam, y + 3); ctx.lineTo(seam, y + h - 3); ctx.stroke(); }
+    ctx.fillStyle = "#3A281B"; rr(wp.x - 3, wp.y + wp.h - 6, wp.w + 6, 8, 3); ctx.fill();  // stone lip at the base
+    ctx.restore();
+  }
+  function drawGatePlate(pl, lit) {
+    if (pl.x - cxCache > VIEW_W + 60 || pl.x + pl.w - cxCache < -60) return;
+    var cx = pl.x + pl.w / 2, cy = pl.y + pl.h / 2;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.28)"; ctx.beginPath(); ctx.ellipse(cx, cy + 4, pl.w * 0.56, 6, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = lit ? "#F0A63E" : "#5A4432";
+    ctx.beginPath(); ctx.ellipse(cx, cy, pl.w * 0.5, pl.h * 0.9, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = lit ? "#FFE7A6" : "#7A6248"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(cx, cy, pl.w * 0.36, pl.h * 0.55, 0, 0, 7); ctx.stroke();
+    if (lit) { ctx.globalAlpha = 0.5 + Math.sin(G.time * 8) * 0.3; ctx.fillStyle = "#FFF3D0"; ctx.beginPath(); ctx.ellipse(cx, cy, pl.w * 0.22, pl.h * 0.32, 0, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  function drawGateLever(lv, pulled) {
+    if (lv.x - cxCache > VIEW_W + 60 || lv.x + lv.w - cxCache < -60) return;
+    var bx = lv.x + lv.w / 2, by = lv.y + lv.h;
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.ellipse(bx, by + 3, 16, 5, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = "#4A3626"; ctx.lineWidth = 6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by - 22); ctx.stroke();
+    var ang = pulled ? -1.0 : -0.35;
+    ctx.strokeStyle = pulled ? "#F0A63E" : "#C77E22"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(bx, by - 22); ctx.lineTo(bx + Math.sin(ang) * 20, by - 22 - Math.cos(ang) * 20); ctx.stroke();
+    ctx.fillStyle = "#FFE7A6"; ctx.beginPath(); ctx.arc(bx + Math.sin(ang) * 20, by - 22 - Math.cos(ang) * 20, 4.5, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  function drawGateBridge(g) {
+    for (var i = 0; i < g.steps.length; i++) {
+      var s = g.steps[i];
+      if (s.x - cxCache > VIEW_W + 60 || s.x + s.w - cxCache < -60) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.3 + g.riseAmt * 0.7;
+      ctx.fillStyle = "#8A6A46"; rr(s.x, s.y, s.w - 4, s.h, 3); ctx.fill();
+      ctx.fillStyle = "#5A4432"; ctx.fillRect(s.x, s.y + s.h - 3, s.w - 4, 3);
+      ctx.restore();
+    }
   }
   function drawCheckpoints() {
     var cps = G.level && G.level.checkpoints;
@@ -6634,6 +6984,7 @@
 
   resize();
   drawHearts();
+  if (typeof refreshLobby === "function") refreshLobby();   // sync the "Weiterspielen" button + MP availability on boot
   requestAnimationFrame(frame);
 })();
 </script>
