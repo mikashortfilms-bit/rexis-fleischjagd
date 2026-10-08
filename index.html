@@ -1,8 +1,4 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8" />
-<title>Rexis Fleischjagd</title>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Rexis Fleischjagd</title>
 <meta name="description" content="Fullscreen-Jump-'n'-Run mit knuffigem T-Rex: drei Level, Fleisch sammeln, und am Ende jedes Levels der Spinosaurus." />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10,11 +6,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" />
 
 <style>
-  html,body{margin:0}
-  *,*::before,*::after{box-sizing:border-box}
-  img{max-width:100%}
-  [hidden]{display:none!important}
-
   :root {
     --meat: #E1553C;
     --amber: #F0A63E;
@@ -540,8 +531,7 @@
     #dlgHint, #dlgText { animation: none; }
   }
 </style>
-</head>
-<body>
+
 <div id="stage">
   <canvas id="game"></canvas>
 
@@ -613,16 +603,16 @@
         <button class="btn ghost" id="screenBtn">&#128250; Zuschauen</button>
       </div>
 
-      <!-- DEV — jump straight into a level / its boss fight (hidden; remove `hidden` to re-enable) -->
-      <details class="devbox" hidden>
+      <!-- DEV — jump straight into a level / its boss fight (add `hidden` back to the <details> to hide again) -->
+      <details class="devbox">
         <summary>&#9881; Dev</summary>
         <div class="devrow" id="devRow">
           <span>Level</span>
-          <button data-lvl="0">1</button><button data-lvl="1">2</button><button data-lvl="2">3</button><button data-lvl="3">4</button><button data-lvl="4">5</button><button data-lvl="5">6</button><button data-lvl="6">7</button><button data-lvl="7">8</button>
+          <button data-lvl="0">1</button><button data-lvl="1">2</button><button data-lvl="2">3</button><button data-lvl="3">4</button><button data-lvl="4">5</button><button data-lvl="5">6</button><button data-lvl="6">7</button><button data-lvl="7">8</button><button data-lvl="8">9</button><button data-lvl="9">10</button>
         </div>
         <div class="devrow" id="devRowBoss">
-          <span>Boss</span>
-          <button data-lvl="0">1</button><button data-lvl="1">2</button><button data-lvl="2">3</button><button data-lvl="3">4</button><button data-lvl="4">5</button><button data-lvl="5">6</button><button data-lvl="6">7</button><button data-lvl="7">8</button>
+          <span>Boss/Ende</span>
+          <button data-lvl="0">1</button><button data-lvl="1">2</button><button data-lvl="2">3</button><button data-lvl="3">4</button><button data-lvl="4">5</button><button data-lvl="5">6</button><button data-lvl="6">7</button><button data-lvl="7">8</button><button data-lvl="8">9</button><button data-lvl="9">10</button>
         </div>
       </details>
     </div>
@@ -912,7 +902,7 @@
   function camY() {
     var base = GROUND_Y - VIEW_H * 0.74;                 // the classic ground-level framing
     // set-pieces (arena / cutscenes) stay locked at ground level
-    if (!G.level || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "intro") { G._camSY = base; return base; }
+    if (!G.level || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "intro" || G.state === "river") { G._camSY = base; return base; }
     // otherwise follow the avatar up the climbs and down into the shafts
     var focusY;
     if (G._spectator) {
@@ -964,7 +954,7 @@
     else if (G.state === "clear") nextLevel();
     else if (G.state === "over") retryLevel();
     else if (G.state === "intro") skipIntro();
-    else if ((G.state === "outro" || G.state === "opening") && typeof dialogueAdvance === "function") dialogueAdvance();
+    else if ((G.state === "outro" || G.state === "opening" || G.state === "river") && typeof dialogueAdvance === "function") dialogueAdvance();
   }
 
   addEventListener("keydown", function (e) {
@@ -1383,6 +1373,9 @@
       if (floaties[j].life <= 0) floaties.splice(j, 1);
     }
     if (shake > 0.2) shake *= 0.84; else shake = 0;
+    if (G._blastT > 0) G._blastT--;   // L9/L10: the blinding flash (rock blast or river parting)
+    if (G._jesusT > 0) G._jesusT--;   // L10: the descending-figure visual after the river parts
+    if (G.level && G.level.river && G.level.river.partT > 0) G.level.river.partT--;
   }
 
   // ---------------------------------------------------------------- level builder
@@ -1397,7 +1390,9 @@
     { name: "Die Gewitternacht", tint: "#2A2E4A", sky: ["#3A4066", "#262A47", "#12142A"], boss: "indom", icon: "⛈️", mapC: "#8B92D0", text: "Blitz und Regen. Der Indominus schleppt Langi tiefer in die Nacht." },
     { name: "Die Knochenschlucht", tint: "#6B4A3C", sky: ["#D8A878", "#B06F4C", "#6E3E30"], boss: "anky", icon: "🦴", mapC: "#C98A5E", text: "Eng, hoch, tief. Serpentinen an den Klippen hoch, Höhlengänge quer, Riesenknochen als Stege. Der Indominus ist zurück." },
     { name: "Der Aschenpass", tint: "#4A4038", sky: ["#8A7A66", "#5E4E44", "#2E2622"], boss: "indom", icon: "⛰️", mapC: "#9A8A76", text: "Ascheregen, glühende Risse, schmale Grate über dem Abgrund. Ganz nach oben zu Indominus' Bau — und seinen Raptoren-Wachen." },
-    { name: "Der Feuergipfel", tint: "#3A1A1A", sky: ["#5A2222", "#3A1414", "#160808"], boss: "indom", icon: "🔥", mapC: "#D64B32", text: "Das Finale am Kraterrand. Lava, Steinschlag, wackelnde Felsen — und der Indominus mit allem, was er hat." }
+    { name: "Der Feuergipfel", tint: "#3A1A1A", sky: ["#5A2222", "#3A1414", "#160808"], boss: "indom", icon: "🔥", mapC: "#D64B32", text: "Das Finale am Kraterrand. Lava, Steinschlag, wackelnde Felsen — und der Indominus mit allem, was er hat." },
+    { name: "Der Ausbruch", tint: "#4A1410", sky: ["#FF9A4A", "#C94A28", "#2A0E0C"], boss: null, icon: "🌋", mapC: "#FF6A38", text: "Der Vulkan bricht aus! Kein Bossfight — nur LAUFEN. Die Lava ist direkt hinter euch, also bloß nicht trödeln.", chase: true },
+    { name: "Der Lavafluss", tint: "#3A0E0C", sky: ["#FFB347", "#D9502A", "#1E0906"], boss: null, icon: "🙏", mapC: "#FF8A3D", text: "Das Finale. Die Lava ist immer noch hinter euch — und irgendwo liegt ein ganzer Lavafluss quer im Weg.", chase: true }
   ];
 
   // per-level boss endings ({who: "spino" | "indom" | "rex" | "langi"})
@@ -1459,8 +1454,39 @@
       { who: "anky", txt: "Es ist vorbei. Endlich Ruhe." },
       { who: "anky", txt: "Ihr könnt bei mir bleiben. Platz ist genug — solange keiner auf mein Geröll tritt." },
       { who: "hero", txt: "Abgemacht. Bis zum nächsten knurrenden Bauch." }
+    ],
+    // L9 "Der Ausbruch": no boss — a dead-end rock, panic, then a blinding flash blows it apart.
+    // "ally" = whoever's actually along for the ride (a co-op partner, a solo stand-in companion,
+    // or — if nobody else is around — your own hero voice, so this always reads fine either way)
+    [
+      { who: "hero", txt: "Ein Felsen! Der Weg ist komplett versperrt!" },
+      { who: "ally", txt: "Die Lava staut sich hinter uns auf — wir sitzen fest!" },
+      { who: "hero", txt: "Hilfe! Ist da draußen irgendjemand?! HILFE!" },
+      { who: "hero", txt: "W-was war das?! Dieses Licht — so hell ..." },
+      { who: "ally", txt: "Der Felsen ist weg?! Keine Zeit zum Nachdenken — LAUFT!" }
+    ],
+    // L10 "Der Lavafluss" — the finale: the chase continues from L9, then (mid-level, see
+    // RIVER_SCENES below) a lava RIVER blocks the way and gets parted. This is just the door-arrival
+    // reaction once the level's actually over.
+    [
+      { who: "hero", txt: "Geschafft ... wir haben's wirklich geschafft." },
+      { who: "ally", txt: "Wow. Jesus hat uns gerettet. Zweimal." },
+      { who: "hero", txt: "Dem schulden wir wirklich was." },
+      { who: "ally", txt: "Komm — wir haben uns eine Pause verdient." }
     ]
   ];
+  // L10's mid-level river-crossing scene (not an opening, not the ending — a THIRD kind of
+  // cutscene, triggered when the player reaches G.level.river in updatePlay). Keyed by level index
+  // like OPENINGS/STORY so the mechanism is reusable later without being hardcoded to L10.
+  var RIVER_SCENES = {
+    9: [
+      { who: "hero", txt: "Oh nein — hier ist ein ganzer Lavafluss im Weg!" },
+      { who: "ally", txt: "Wir kommen da niemals drüber. Was machen wir jetzt?!" },
+      { who: "hero", txt: "Dann lass uns doch beten ..." },
+      { who: "ally", txt: "Seht nur — DAS LICHT! Es ist wieder da!" },
+      { who: "hero", txt: "Der Fluss teilt sich! Los, bevor er zurückkommt — LAUFT!" }
+    ]
+  };
 
   // opening cutscenes keyed by level index (dialogue before play starts)
   var OPENINGS = {
@@ -1494,6 +1520,18 @@
       { who: "hero", txt: "Der Kraterrand. Weiter geht's nicht. Hier endet es — so oder so." },
       { who: "anky", txt: "Passt auf die Felsbrocken auf. Ich bleib hinter euch, falls was von vorn kommt." },
       { who: "hero", txt: "Er wartet da oben. Auf uns alle auf einmal. Na dann — los." }
+    ],
+    8: [
+      { who: "hero", txt: "Kaum ausgeruht, da bebt der Boden schon wieder. Das fühlt sich anders an." },
+      { who: "ally", txt: "Anders? Das fühlt sich an wie ... der ganze Berg." },
+      { who: "ally", txt: "Seht den Rauch! LAVA — sie bricht aus der Spitze aus!" },
+      { who: "hero", txt: "Nicht nachdenken — LAUFEN!" }
+    ],
+    9: [
+      { who: "hero", txt: "Schnell — weiterrennen, bevor die Lava uns auch hier erreicht!" },
+      { who: "ally", txt: "Aber ... was war das eben? Dieses Licht war so hell!" },
+      { who: "hero", txt: "Keine Ahnung. Aber irgendwer hat uns gerade gerettet." },
+      { who: "ally", txt: "Darüber reden wir später — LAUFT!" }
     ]
   };
 
@@ -1528,6 +1566,8 @@
     // solid door whose `.solid` gets toggled at runtime by updateGates() to open/close it
     function plate(x, y, w, h) { return { x: x, y: y, w: w || 48, h: h || 10 }; }
     function gwall(x, y, w, h) { var g = { x: x, y: y, w: w, h: h, solid: true, gate: true }; plats.push(g); return g; }
+    // the dead-end boulder blocking L9's arena mouth — solid until triggerTrappedBlast() clears it
+    function rock(x, y, w, h) { var rk = { x: x, y: y, w: w, h: h, solid: true, rock: true }; plats.push(rk); return rk; }
 
     var x = 640;
     // each world has its own layout language
@@ -1567,11 +1607,26 @@
       pool = ["crevasse", "switchback", "pillars", "gauntlet", "tower", "overpass", "steps", "undertunnel", "undertunnel", "cave", "shafts"];
       hiddenSet = ["undertunnel", "shafts", "cave"];
       gapBase = 124; ledgeHi = 162;
-    } else {                    // Feuergipfel — the finale: brutal mix of everything, deepest & most underground
+    } else if (idx === 7) {     // Feuergipfel — the finale: brutal mix of everything, deepest & most underground
       rooms = 26;
       pool = ["crevasse", "shafts", "shafts", "undertunnel", "undertunnel", "switchback", "pillars", "cave", "cave", "gauntlet", "overpass"];
       hiddenSet = ["shafts", "undertunnel", "cave"];
       gapBase = 130; ledgeHi = 168;
+    } else if (idx === 8) {     // Der Ausbruch — forced lava-chase: every room still only ever needs you to go
+      // FORWARD in x (even "shafts"/"undertunnel" climb back out further along, never behind you), so the
+      // chase stays fair; skips only the two true side-detour "HIDDEN" stash rooms (dip/canopy) to keep the
+      // forward urgency. Lots of caves/tunnels + varied-height platforming per the user's request.
+      rooms = 20;
+      pool = ["run", "gaps", "gauntlet", "cave", "cave", "tower", "steps", "pillars", "undertunnel", "crevasse", "switchback", "overpass", "high"];
+      hiddenSet = ["cave", "undertunnel", "tower"];
+      gapBase = 110; ledgeHi = 140;
+    } else {                    // Der Lavafluss — the true finale: same forced chase as L9, plus a
+      // mid-level lava RIVER (a "lavaRiver" room, forced in below) that needs the Jesus-parting
+      // miracle to cross. Same forward-only room-pool philosophy as L9.
+      rooms = 20;
+      pool = ["run", "gaps", "gauntlet", "cave", "cave", "tower", "steps", "pillars", "undertunnel", "crevasse", "switchback", "overpass", "high"];
+      hiddenSet = ["cave", "undertunnel", "tower"];
+      gapBase = 110; ledgeHi = 140;
     }
     // ---- co-op-only "gates": 1-2 team obstacles per level, spread across the run ----
     var gateRoomKinds = [];
@@ -1579,6 +1634,7 @@
       if (idx === 5) gateRoomKinds = [{ frac: 0.55, kind: "gateSwitch" }];
       else if (idx === 6) gateRoomKinds = [{ frac: 0.32, kind: "gateSwitch" }, { frac: 0.72, kind: "gateBridge" }];
       else if (idx === 7) gateRoomKinds = [{ frac: 0.38, kind: "gateSwitch" }, { frac: 0.78, kind: "gateTimer" }];
+      else if (idx === 8) gateRoomKinds = [{ frac: 0.3, kind: "gateSwitch" }];
     }
     var boneRoom = rooms - 4;
     while (boneRoom > 3 && boneRoom % 3 === 0) boneRoom--;
@@ -1589,6 +1645,13 @@
       gateRoomMap[gr] = gateRoomKinds[gk].kind;
     }
     var gates = [];    // co-op team obstacles built into specific rooms below
+    // ---- L10 only: one room along the run is forced to be the lava-river story beat ----
+    var riverRoomIdx = -1;
+    if (idx === 9) {
+      riverRoomIdx = Math.max(2, Math.min(rooms - 3, Math.round(rooms * 0.45)));
+      while (riverRoomIdx === boneRoom || gateRoomMap[riverRoomIdx]) riverRoomIdx++;
+    }
+    var river = null;    // the lava-river obstacle itself, filled in when its room is built below
 
     var cpCand = [];    // safe (full-ground) spots where a checkpoint flag can stand
     for (var r = 0; r < rooms; r++) {
@@ -1596,6 +1659,7 @@
       var forced = (r > 1 && r % 3 === 0);
       var kind = forced ? hiddenSet[Math.floor(r / 3) % hiddenSet.length] : pick(pool);
       if (gateRoomMap[r]) kind = gateRoomMap[r];
+      if (r === riverRoomIdx) kind = "lavaRiver";
       if (r === boneRoom && kind !== "run" && kind !== "gauntlet") kind = "run";
       if (r > 1 && r < rooms - 2) cpCand.push(startX + 40);   // every room starts on solid ground
 
@@ -1857,13 +1921,15 @@
         x += tw;
         plats.push(seg(x + 14, R(220, 300))); x += 14 + R(220, 300);
       }
-      // ---- CO-OP GATE: two (or three) pressure plates, held down at once, open a stone door for good ----
+      // ---- CO-OP GATE: two (or three) pressure plates, held down at once, open a stone door for good.
+      // Door is tall (400) specifically so it can't be jumped over from ANY ledge in this room — a
+      // single jump only reaches ~130px, so even the highest plate-ledge (GY-196) can't clear it. ----
       else if (kind === "gateSwitch") {
         var sw2 = R(440, 540);
         plats.push(seg(x, sw2));
-        var need3 = idx >= 7;
+        var need3 = idx === 7;
         var gateX = x + sw2 * 0.62;
-        var wallP = gwall(gateX, GY - 168, 30, 168);
+        var wallP = gwall(gateX, GY - 400, 30, 400);
         var plateList = [];
         plateList.push(plate(x + sw2 * 0.16, GY - 6, 48, 10));                       // plate 1: ground level
         var ledgeY = GY - (idx >= 6 ? 128 : 88);
@@ -1880,11 +1946,13 @@
         bone(gateX + 120, GY - 30);
         x += sw2;
       }
-      // ---- CO-OP GATE: one holds a plate to keep a stepping-stone bridge in place, the other crosses a pit ----
+      // ---- CO-OP GATE: one holds a plate to keep a stepping-stone bridge in place, the other crosses a pit.
+      // Gap is wider than a running jump can ever cross (max single-jump carry is ~190px in this
+      // engine) so it can't be solo-jumped past without ever touching the plate. ----
       else if (kind === "gateBridge") {
         var ba = R(150, 200); plats.push(seg(x, ba)); x += ba;
         var plateXY = plate(x - 56, GY - 6, 50, 10);
-        var gap = R(190, 250);
+        var gap = R(270, 330);
         var stepN = 4, stepW = gap / stepN, steps = [];
         for (var si = 0; si < stepN; si++) steps.push({ x: x + si * stepW, y: GY - 8, w: stepW + 6, h: 12, solid: false, gate: true, bridgeStep: true });
         gates.push({ idx: gates.length, type: "bridge", plate: plateXY, steps: steps, inserted: false, riseAmt: 0 });
@@ -1911,6 +1979,23 @@
         bone(gateX2 + 130, GY - 30);
         x += tw2;
       }
+      // ---- L10 story beat: a lava river blocks the way entirely until the Jesus-parting scene
+      // fires (see startRiverScene/partRiver). The gap is NOT bridged here — the steps exist but
+      // stay out of `plats` until partRiver() inserts them, so the river is genuinely uncrossable
+      // beforehand (not just a normal jumpable gap). ----
+      else if (kind === "lavaRiver") {
+        var rlw = R(180, 220); plats.push(seg(x, rlw)); x += rlw;
+        meatLine(x - 40, GY - 30, 2, 20, 0);
+        var riverW = 300, riverX = x;
+        var rStepN = 5, rStepW = riverW / rStepN, riverSteps = [];
+        for (var rs = 0; rs < rStepN; rs++) riverSteps.push(led(x + rs * rStepW, GY - 8, rStepW + 6));
+        river = { x: riverX, w: riverW, steps: riverSteps, crossed: false, triggered: false, partT: 0 };
+        x += riverW;
+        plats.push(seg(x, R(240, 320)));
+        meatLine(x + 24, GY - 30, 3, 24, 0);
+        bone(x + 110, GY - 30);
+        x += R(240, 320);
+      }
 
       if (r === boneRoom) bone(startX + 130, GY - 46);
     }
@@ -1918,6 +2003,10 @@
     var arenaX = x + 110;
     plats.push(seg(x - 10, ARENA_W + 1100));         // arena + long runway for the victory walk to the feast + door
     bones.push({ x: arenaX + 100, y: GY - 46, r: 12, t: 0, taken: false });
+
+    // L9 "Der Ausbruch": a dead-end boulder seals the path past the arena mouth until the blast
+    // opens it — sits BEYOND the +70/+96 trigger/hold points so reaching it is what starts the scene
+    var blockRock = (idx === 8) ? rock(arenaX + 110, GY - 172, 62, 172) : null;
 
     var feastX = arenaX + ARENA_W + 240;
     var doorX = feastX + 360;
@@ -1949,7 +2038,7 @@
     return {
       idx: idx, name: LEVELS[idx].name, plats: plats, meats: meats, bones: bones, foes: foes,
       checkpoints: checkpoints, deathY: deathY, gates: gates,
-      arenaX: arenaX, endX: arenaX + ARENA_W, feastX: feastX, doorX: doorX
+      arenaX: arenaX, endX: arenaX + ARENA_W, feastX: feastX, doorX: doorX, blockRock: blockRock, river: river
     };
   }
 
@@ -2013,11 +2102,15 @@
     G.spino = null;
     G.hazards = [];
     G.leftWall = null;
-    G.cutNpc = null; G.opening = null; G.outro = null;
+    G.cutNpc = null; G.opening = null; G.outro = null; G.riverScene = null;
+    G._jesusT = 0;
     // Anky walks the parcours with you on L7 + L8 (story: he shows the way). Not a playable figure.
     G.ally = (!G._spectator && (i === 6 || i === 7) && !(G.player && G.player.char === "anky"))
       ? { x: 60, y: GROUND_Y, w: 60, h: 44, facing: 1, t: 0, _px: 60, _moving: false, kills: 0, killCap: 3, swing: 0, parked: false, say: 0, saveCd: 90, dashT: 0, dashHit: false, dashFoe: -1, dashTargetX: 0, dashY: 0 }
       : null;
+    // L9 "Der Ausbruch": lava chases from behind on a forced scroll — purely local per client, like the co-op gates
+    G._chase = (LEVELS[i].chase && !G._spectator) ? { x: -40, spd: 1.3, spdMax: 2.5 } : null;
+    G._blastT = 0;
     G.time = 0;
     G.levelTotal = G.level.meats.length;
     G.levelGot = 0; G._arenaWait = false;
@@ -2092,7 +2185,7 @@
   function tickMusic() {
     if (!audio.music) return;
     var st = G.state;
-    if (G.level && (st === "play" || st === "intro" || st === "opening")) audio.music.level(G.levelIndex);
+    if (G.level && (st === "play" || st === "intro" || st === "opening" || st === "river")) audio.music.level(G.levelIndex);
     else if (st === "boss") { audio.music.level(G.levelIndex); audio.music.boss(true); }
     else if (st === "outro") audio.music.boss(false);
     else audio.music.stop();
@@ -2120,7 +2213,7 @@
     document.getElementById("winMeat").textContent = G.totalMeat;
     document.getElementById("winTime").textContent = fmt(G.time);
     document.getElementById("winText").textContent =
-      "Acht Level, drei Fieslinge bezwungen, Langi gerettet, Anky als Freund. Rexi, Spino, Langi & Anky — ein Rudel, das keiner mehr trennt.";
+      "Zehn Level, drei Fieslinge bezwungen, Langi gerettet, Anky als Freund, einen Vulkanausbruch überlebt — und sogar über einen Lavafluss gerettet worden. Rexi, Spino, Langi, Anky & Jesus — ein Rudel, das keiner mehr trennt.";
     elWin.hidden = false;
     elHud.hidden = true;
     audio.fanfare();
@@ -2273,7 +2366,8 @@
     { id: "rex", nm: "Rexi", locked: false },
     { id: "spino", nm: "Spino", need: "Level 3 schaffen" },
     { id: "langhals", nm: "Langhals", need: "Level 5 schaffen" },
-    { id: "anky", nm: "Anky", need: "Level 8 schaffen" }
+    { id: "anky", nm: "Anky", need: "Level 8 schaffen" },
+    { id: "jesus", nm: "Jesus", need: "Level 10 schaffen" }
   ];
   function unlockKey(mode) { return (mode === "co") ? "rexi_co_unlocks" : "rexi_sp_unlocks"; }
   function ownUnlocks(mode) {
@@ -2325,7 +2419,8 @@
   function layoutDialogueBubble() {
     if (!_dlgOn || !elDlgBox) return;
     var cut = (G.state === "outro" && G.outro && G.outro.phase === "talk") ? G.outro
-      : (G.state === "opening" && G.opening) ? G.opening : null;
+      : (G.state === "opening" && G.opening) ? G.opening
+        : (G.state === "river" && G.riverScene) ? G.riverScene : null;
     if (!cut) return;
     var cur = cut.script[cut.line]; if (!cur) return;
     var sp = dlgSpeaker(cur.who);
@@ -2357,7 +2452,8 @@
   }
   // resolve a story speaker -> label, bubble accent, the world entity the bubble points at,
   // and bubbleY = the world Y the speech-bubble anchor should sit at (clearly ABOVE the drawn head)
-  var CHAR_NAME = { rex: "Rexi", spino: "Spino", langhals: "Langi", anky: "Anky" };
+  var CHAR_NAME = { rex: "Rexi", spino: "Spino", langhals: "Langi", anky: "Anky", jesus: "Jesus" };
+  var COMPANION_TINT = { rex: { a: "#69C06E", b: "#4E9E57" }, spino: { a: "#E88A3C", b: "#B5701E" }, langhals: { a: "#8FBF6A", b: "#5E9048" }, anky: { a: "#8FB56A", b: "#5C7E3E" }, jesus: { a: "#F0DDB0", b: "#C9A868" } };
   function heroName() {
     if (NET.name && !/^Rexi \d+$/.test(NET.name)) return NET.name;        // a custom name always wins
     return CHAR_NAME[G.player && G.player.char] || "Rexi";                 // else name the dino you picked
@@ -2373,7 +2469,58 @@
       var ae = (s && s.kind === "anky") ? s : (n && n.type === "anky" ? n : null);
       if (ae) return { name: "Anky", col: "#8FB56A", shade: "#5C7E3E", ent: ae, bubbleY: ae.y - 46 };
     }
-    // everything else ("hero" / "rex" / an off-stage character) -> spoken by the local player's dino
+    // "ally" = a generic companion line that doesn't care WHICH dino says it — whichever real
+    // co-op partner is around, or (solo) whichever stand-in companion got picked for this scene —
+    // used when a script needs a 2nd voice without hardcoding a species that might not be present
+    if (who === "ally") {
+      if (NET.on) {
+        var anyPeer = null;
+        netLivePeers().forEach(function (pe) {
+          if (anyPeer || pe.role === "screen" || pe.lvl !== G.levelIndex || !pe.d) return;
+          if (pe.d.dead || pe.d.gh || pe.d.out) return;
+          anyPeer = pe;
+        });
+        if (anyPeer) {
+          var apcol = peerColor(anyPeer.co);
+          var aHeadUp = anyPeer.ch === "langhals" ? 104 : anyPeer.ch === "spino" ? 52 : anyPeer.ch === "anky" ? 30 : 40;
+          return { name: anyPeer.nm || CHAR_NAME[anyPeer.ch] || "Freund", col: apcol.a, shade: apcol.b, ent: { x: anyPeer.d.x, y: anyPeer.d.y, w: 42, h: 48 }, bubbleY: anyPeer.d.y - aHeadUp };
+        }
+      } else if (n && n.species) {
+        var allyHeadUp = n.species === "langhals" ? 104 : n.species === "spino" ? 52 : n.species === "anky" ? 30 : 40;
+        var allyCol = COMPANION_TINT[n.species] || COMPANION_TINT.rex;
+        return { name: CHAR_NAME[n.species] || "Freund", col: allyCol.a, shade: allyCol.b, ent: n, bubbleY: n.y - allyHeadUp };
+      }
+      // nobody else around — fall through to the hero voice below
+    }
+    // species-keyed companion chat (e.g. L9's "whoever's unlocked talks" scenes): resolves to
+    // whoever actually embodies that species right now — you, a co-op peer, or (solo) a scripted
+    // stand-in companion — and otherwise falls through to your own hero voice below, so a line
+    // never goes unspoken just because nobody picked that dino this run
+    if (who === "rex" || who === "spino" || who === "langhals" || who === "anky" || who === "jesus") {
+      var headUpSp = who === "langhals" ? 104 : who === "spino" ? 52 : who === "anky" ? 30 : 40;
+      if (!G._spectator && G.player && G.player.char === who) {
+        return { name: heroName(), col: myColor().a, shade: myColor().b, ent: G.player, bubbleY: G.player.y - headUpSp };
+      }
+      if (NET.on) {
+        var speciesPeer = null;
+        netLivePeers().forEach(function (pe) {
+          if (speciesPeer || pe.role === "screen" || pe.lvl !== G.levelIndex || !pe.d) return;
+          if (pe.d.dead || pe.d.gh || pe.d.out) return;
+          if (pe.ch === who) speciesPeer = pe;
+        });
+        if (speciesPeer) {
+          var pcol = peerColor(speciesPeer.co);
+          return { name: speciesPeer.nm || CHAR_NAME[who], col: pcol.a, shade: pcol.b, ent: { x: speciesPeer.d.x, y: speciesPeer.d.y, w: 42, h: 48 }, bubbleY: speciesPeer.d.y - headUpSp };
+        }
+      }
+      var comp = (G.cutNpc && G.cutNpc.species === who) ? G.cutNpc : (G.cutNpc2 && G.cutNpc2.species === who ? G.cutNpc2 : null);
+      if (comp) {
+        var ccol = COMPANION_TINT[who] || COMPANION_TINT.rex;
+        return { name: CHAR_NAME[who], col: ccol.a, shade: ccol.b, ent: comp, bubbleY: comp.y - headUpSp };
+      }
+      // nobody embodies this species right now — fall through to the generic hero voice
+    }
+    // everything else ("hero" / an off-stage character) -> spoken by the local player's dino
     var rp = (G._spectator && typeof partyLeadAvatar === "function") ? partyLeadAvatar() : G.player;
     var rn = G._spectator ? ((rp && rp.nm) || "Rexi") : heroName();
     var rc = G._spectator ? "#7FC94B" : myColor().a;
@@ -2457,7 +2604,7 @@
     }
     var partnerInGame = null;
     netLivePeers().forEach(function (pe) {
-      if (pe.role !== "screen" && (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro")) partnerInGame = pe;
+      if (pe.role !== "screen" && (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river")) partnerInGame = pe;
     });
     if (!NET.on && partnerInGame) {
       elJoinBtn.hidden = false; elCoopBtn.hidden = true;
@@ -2630,7 +2777,7 @@
     if (!NET.on) return;
     // screen mode: everyone left mid-level -> back to the waiting screen
     if (G._spectator) {
-      var inLvlS = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro");
+      var inLvlS = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river");
       if (inLvlS && partyAvatars().length === 0) {
         NET._noCtl = (NET._noCtl || 0) + 1;
         if (NET._noCtl > 200) {
@@ -2641,7 +2788,7 @@
       } else NET._noCtl = 0;
       return;
     }
-    var inLevel = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro");
+    var inLevel = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river");
     netAllPeers().forEach(function (pe) {
       var g = peerGone(pe);
       if (g && !pe.gone) { pe.gone = true; if (inLevel && pe.wasNamed) toast((pe.nm || "Dein Partner") + " hat das Spiel verlassen."); }
@@ -2658,7 +2805,7 @@
       netRespawn(G.player);
     }
     G.prevState = (G.state === "boss") ? "boss" : "play";
-    if (G.state === "outro" || G.state === "opening") { hideDialogue(); }
+    if (G.state === "outro" || G.state === "opening" || G.state === "river") { hideDialogue(); }
     G.state = "paused";
     showSoloPrompt();
   }
@@ -2788,6 +2935,10 @@
       : (typeof G._cpX === "number" ? G._cpX : 120);
     pl.x = rx; pl.y = GROUND_Y - 48;
     pl.vx = 0; pl.vy = 0; pl.hearts = 3; pl.invuln = 150; pl.koT = 0; pl.dead = false; pl.ghost = false;
+    // L9: give the lava a breather so respawning at a checkpoint it already passed isn't instant death
+    // — AND rebuild any ground it had already eaten ahead of the new front, or there'd be nothing
+    // solid to stand on, walk back across, or even see between here and where the player died
+    if (G._chase) { G._chase.x = Math.min(G._chase.x, rx - 260); restoreCrumbledFrom(G._chase.x); }
     drawHearts(); syncHud();
     burst(rx + pl.w / 2, GROUND_Y - 24, "#CDEBB0", 14, 1.6);
     floatText(pl.x + pl.w / 2, pl.y - 20, (G.state === "boss") ? "nochmal rein!" : (G._cpIdx >= 0 ? "an der Fahne weiter!" : "von vorn ..."), "#CDEBB0");
@@ -2812,6 +2963,7 @@
     if (p && p.ghost && !p.out) {
       p.ghost = false; p.dead = false; p.hearts = 3;
       p.x = cp.x; p.y = GROUND_Y - 48; p.vx = 0; p.vy = 0; p.invuln = 150;
+      if (G._chase) { G._chase.x = Math.min(G._chase.x, cp.x - 260); restoreCrumbledFrom(G._chase.x); }
       drawHearts(); syncHud();
       burst(cp.x, GROUND_Y - 30, "#CDEBB0", 16, 1.8);
       floatText(cp.x, GROUND_Y - 70, "zurück im Spiel!", "#CDEBB0");
@@ -2858,7 +3010,11 @@
             if (plateHit >= 0) { usedBody[plateHit] = true; coveredCount++; }
           }
           g.plateLit = lit;
-          var need = Math.min(g.plates.length, Math.max(2, bodies.length));
+          // scales EXACTLY to who's actually alive right now: 2 alive -> genuinely needs 2 (can't be
+          // covered by one body on two plates at once), 3 alive -> needs 3 — but never a hard floor
+          // of 2, or a team down to its last survivor (partner a ghost / K.O.'d) would be permanently
+          // stuck at a gate they can no longer possibly satisfy with 2 bodies.
+          var need = Math.min(g.plates.length, Math.max(1, bodies.length));
           if (coveredCount >= need) {
             g.holdT = (g.holdT || 0) + 1;
             if (g.holdT > 26) {
@@ -2876,7 +3032,9 @@
       }
 
       else if (g.type === "bridge") {
-        var held = bodies.some(function (b) { return aabb(b, g.plate); });
+        // down to one living body (ghost/K.O.'d partner, or genuinely solo) -> one person obviously
+        // can't hold the plate AND cross at the same time, so the bridge just stays up for them
+        var held = bodies.length <= 1 ? true : bodies.some(function (b) { return aabb(b, g.plate); });
         g.riseAmt += ((held ? 1 : 0) - g.riseAmt) * 0.18;
         if (held && !g.inserted) {
           g.inserted = true;
@@ -2901,7 +3059,13 @@
         } else {
           if (g.cd > 0) g.cd--;
           var touching = bodies.some(function (b) { return aabb(b, g.lever); });
-          if (touching && g.cd <= 0) {
+          // must have a SECOND body already stationed near the gate before the lever can fire — a
+          // skilled solo player could otherwise just sprint lever-to-gate inside the timer window and
+          // never actually need a partner. Falls back to "just the lever" when only one body is alive.
+          var partnerWaiting = bodies.length <= 1 ? true : bodies.some(function (b) {
+            return !aabb(b, g.lever) && Math.abs((b.x + b.w / 2) - (g.wallPlat.x + g.wallPlat.w / 2)) < 140;
+          });
+          if (touching && partnerWaiting && g.cd <= 0) {
             g.openT = g.duration || 200; g.cd = 40; g.wallPlat.solid = false;
             audio.hop();
             burst(g.lever.x + g.lever.w / 2, g.lever.y - 6, "#FFD873", 14, 1.6);
@@ -3021,7 +3185,7 @@
       var into = null;
       netLivePeers().forEach(function (pe) {
         if (pe.role === "screen") return;
-        if (typeof pe.lvl === "number" && (pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro")) into = pe.lvl;
+        if (typeof pe.lvl === "number" && (pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river")) into = pe.lvl;
       });
       if (into != null && into >= 0 && into < LEVEL_COUNT && (G.state === "screenlobby" || into !== G.levelIndex)) {
         NET._adv = 60; beginLevel(into);
@@ -3032,7 +3196,7 @@
     var ahead = -1;
     netLivePeers().forEach(function (pe) { if (typeof pe.lvl === "number" && pe.lvl > ahead) ahead = pe.lvl; });
     if (ahead > G.levelIndex && ahead <= LEVEL_COUNT - 1 &&
-      (G.state === "play" || G.state === "boss" || G.state === "clear" || G.state === "outro" || G.state === "intro" || G.state === "opening")) {
+      (G.state === "play" || G.state === "boss" || G.state === "clear" || G.state === "outro" || G.state === "intro" || G.state === "opening" || G.state === "river")) {
       NET._adv = 60;
       beginLevel(ahead);
     }
@@ -3043,7 +3207,7 @@
   function coopPartnerPresent() {
     var ok = false;
     netLivePeers().forEach(function (pe) {
-      if (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "boss") ok = true;
+      if (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "river") ok = true;
     });
     return ok;
   }
@@ -3202,7 +3366,7 @@
     if (G.state !== "map" || G.mode !== "co") return;
     var sel = null;
     netLivePeers().forEach(function (pe) {
-      if (typeof pe.sel === "number" && (pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play")) sel = pe.sel;
+      if (typeof pe.sel === "number" && (pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "river")) sel = pe.sel;
     });
     if (sel != null && sel >= 0 && sel <= maxPlayable() - 1) { NET._mapSel = sel; startLevel(sel); }
   }
@@ -3563,7 +3727,7 @@
     openCustom(function () { paintPause(!!G._soloPrompt); hideAllScreens(); elPause.hidden = false; });
   });
 
-  // ---- DEV: jump straight to any level, or straight to its boss fight (remove this block later) ----
+  // ---- DEV: jump straight to any level, or straight to its boss fight / L9's ending (remove this block later) ----
   function devJump(i, toBoss) {
     NET.on = false; NET.role = "solo"; G._spectator = false; G.mode = "sp";
     audio.resume();
@@ -3575,7 +3739,7 @@
     G.player.x = G.level.arenaX + 60;
     G.player.y = GROUND_Y - 48;
     G.state = "play";
-    startBoss();
+    if (LEVELS[i].boss) startBoss(); else startTrapped();   // L9 has no boss — go straight to the dead-end dialogue
     resize();
   }
   function wireDevRow(id, toBoss) {
@@ -3592,7 +3756,7 @@
   var elUnlockNext = document.getElementById("unlockNext");
   var _unlockThen = null;
   function showUnlock(id, then) {
-    var c = { spino: ["Spinosaurus", "Spino"], langhals: ["Langhals", "Langhals"], anky: ["Ankylosaurus", "Anky"] }[id] || [id, id];
+    var c = { spino: ["Spinosaurus", "Spino"], langhals: ["Langhals", "Langhals"], anky: ["Ankylosaurus", "Anky"], jesus: ["Jesus", "Jesus"] }[id] || [id, id];
     hideAllScreens();
     document.getElementById("unlockTitle").textContent = c[0] + " freigeschaltet!";
     document.getElementById("unlockText").textContent =
@@ -3619,6 +3783,13 @@
     var p = G.player, list = G.level.plats;
     for (var i = 0; i < list.length; i++) {
       var pl = list[i];
+      // L9: a crumbled-away plat must be gone entirely, not just "not solid" — `!pl.solid` on its
+      // own means a normal one-way platform (land from above, pass through from below), which would
+      // otherwise still catch a player already standing on it the instant it crumbles (their
+      // previous-frame bottom is right at its surface, not >12px below, so the one-way check below
+      // never triggers the pass-through and they'd just keep "landing" on ground that's supposed to
+      // not exist any more).
+      if (pl._gone) continue;
       if (!aabb(p, pl)) continue;
       if (p.vy > 0) {
         if (!pl.solid && prevBottom > pl.y + 12) continue;
@@ -3694,6 +3865,82 @@
     } else {
       p.ghost = true; p.dead = true; p.ghostT = 0;   // co-op: drift as a ghost until a friend reaches the next flag
       floatText(p.x + p.w / 2, p.y - 32, "warte auf die nächste Fahne", "#CFE8FF");
+    }
+  }
+
+  // L9 "Der Ausbruch": the lava always costs a FULL life + a checkpoint respawn, never just a heart
+  function lavaCatch(p) {
+    if (p.ghost || p.out || p.dead || p.invuln > 0) return;
+    p.hearts = 1;
+    hurt(true);
+  }
+  // L9: everything the lava has swept past caves in — ground, elevated ledges, AND underground
+  // tunnel floors/ceilings alike — so climbing high or dropping into a tunnel only buys a few
+  // seconds, it never makes you immune. Purely local per client (own G.level.plats instance).
+  function crumbleBehindLava() {
+    var c = G._chase, list = G.level.plats;
+    for (var i = 0; i < list.length; i++) {
+      var pl = list[i];
+      if (pl.gate || pl.rock || pl._gone) continue;
+      if (!pl._crumbling) {
+        if (pl.x + pl.w < c.x) {
+          // elevated ledges get a bit longer before they give way — that's the window a player
+          // gets to notice the shake and bail before it drops them back down into the lava's reach
+          var ct = (pl.y < GROUND_Y - 40) ? 40 : 22;
+          pl._origSolid = pl.solid;    // remembered so a later respawn can restore it exactly (leds are solid:false to begin with)
+          pl._crumbling = true; pl._crumbleT = ct; pl._crumbleT0 = ct;
+        }
+        continue;
+      }
+      pl._crumbleT--;
+      if (pl._crumbleT <= 0) {
+        pl.solid = false; pl._gone = true;
+        if (Math.abs(pl.x - G.player.x) < 480) {
+          dust(pl.x + pl.w / 2, pl.y + (pl.y >= GROUND_Y ? 0 : pl.h / 2));
+          burst(pl.x + pl.w / 2, pl.y, "#6E332B", 7, 1.6);
+        }
+      }
+    }
+  }
+  // L9: whatever the player is literally standing on starts crumbling too after they linger on it
+  // a while — a backstop independent of the x-sweep, so chain-hopping down through several stacked
+  // "safe" tiers (e.g. a shaft's wide catch-floor, which can sit well ahead of the chase's x-sweep
+  // for a long time) can't be camped forever just because that particular plat hasn't technically
+  // been passed yet.
+  function crumbleIfLingering(p) {
+    if (!p.onGround) return;
+    var list = G.level.plats;
+    for (var i = 0; i < list.length; i++) {
+      var pl = list[i];
+      if (pl.gate || pl.rock || pl._gone || pl._crumbling) continue;
+      if (p.x + p.w <= pl.x + 6 || p.x >= pl.x + pl.w - 6 || Math.abs((p.y + p.h) - pl.y) > 4) continue;
+      pl._standT = (pl._standT || 0) + 1;
+      if (pl._standT > 210) {   // ~3.5s of camping on one spot (generous, so a normal fight pause doesn't trigger it)
+        pl._origSolid = pl.solid;
+        pl._crumbling = true; pl._crumbleT = 30; pl._crumbleT0 = 30;
+      }
+      return;
+    }
+  }
+  // L9: respawning/pulling the lava back must also un-collapse any ground it had already eaten
+  // ahead of the new front — otherwise a dead player comes back to a landscape with missing
+  // platforms (invisible AND unwalkable) between the checkpoint and where they died, which can
+  // range from "looks broken" to "literally impossible to cross back out of".
+  function restoreCrumbledFrom(fromX) {
+    var list = G.level && G.level.plats; if (!list) return;
+    for (var i = 0; i < list.length; i++) {
+      var pl = list[i];
+      // ALWAYS clear the lingering-stand timer, even on a plat that was never actually mid-crumble —
+      // otherwise the checkpoint ground itself could already be sitting at/near crumbleIfLingering's
+      // threshold from however long the player stood there before dying (to something unrelated,
+      // like a foe), and a few frames after respawning right back onto it would instantly re-trigger
+      // the crumble: died -> respawn -> ground immediately crumbles again -> died -> ... a loop that
+      // makes the level unfinishable.
+      pl._standT = 0;
+      if (!pl._crumbling && !pl._gone) continue;
+      if (pl.x + pl.w < fromX) continue;    // still genuinely behind the (new) lava front — stays gone
+      pl._crumbling = false; pl._gone = false; pl._crumbleT = 0;
+      pl.solid = (typeof pl._origSolid === "boolean") ? pl._origSolid : pl.solid;
     }
   }
 
@@ -3933,14 +4180,27 @@
 
     if (p.y > (G.level.deathY || GROUND_Y + 260)) {
       hurt(true);
-      if (!p.dead) { p.x = (typeof p.safeX === "number" ? p.safeX : 120); p.y = (typeof p.safeY === "number" ? p.safeY : GROUND_Y - 48); p.vx = 0; p.vy = 0; }
+      if (!p.dead) {
+        p.x = (typeof p.safeX === "number" ? p.safeX : 120); p.y = (typeof p.safeY === "number" ? p.safeY : GROUND_Y - 48); p.vx = 0; p.vy = 0;
+        if (G._chase) { G._chase.x = Math.min(G._chase.x, p.x - 260); restoreCrumbledFrom(G._chase.x); }   // L9: don't let a pit-fall land you behind the lava (or in a hole where crumbled ground used to be)
+      }
     }
 
-    // enter the arena -> boss (in co-op, wait until EVERYONE playing is inside)
+    // L10: reaching the lava river takes over with the mid-level Jesus-parting scene — purely
+    // local per client (same philosophy as the co-op gates), so each player gets their own moment
+    // the instant THEY arrive, independent of where their partner currently is.
+    if (G.state === "play" && G.level.river && !G.level.river.triggered && p.x > G.level.river.x - 60) {
+      startRiverScene();
+    }
+
+    // enter the arena -> boss fight, or (L9, no boss) the trapped dead-end dialogue
+    // (in co-op, wait until EVERYONE playing is inside)
     G._arenaWait = false;
     if (G.state === "play" && p.x > G.level.arenaX + 70) {
+      var hasBoss = !!LEVELS[G.levelIndex].boss;
+      var enter = hasBoss ? startBoss : startTrapped;
       if (!NET.on) {
-        startBoss();
+        enter();
       } else {
         var mouth = G.level.arenaX + 40;
         var partnerFighting = false, allInside = true;
@@ -3951,12 +4211,40 @@
           if (!pe.d || pe.d.x < mouth || pe.d.ko) allInside = false;
         });
         if (partnerFighting || allInside) {
-          startBoss();
+          enter();
         } else {
           if (p.x > G.level.arenaX + 96) { p.x = G.level.arenaX + 96; p.vx = 0; }   // hold at the gate
           G._arenaWait = true;
         }
       }
+    }
+
+    // L9 "Der Ausbruch": the lava chases from behind on a forced scroll, ramping up as you go.
+    // Frozen while waiting at the arena gate for a partner, OR while the player is LITERALLY standing
+    // on one of an unsolved co-op gate's plates (not just "somewhere in that room" — that would let
+    // someone camp an entire room indefinitely and stall the whole level's time pressure for free).
+    // This only protects the actual narrow case it's meant to: holding a plate waiting for a partner
+    // who's still catching up, same spirit as the existing arena-gate wait.
+    var onGatePlate = false;
+    if (G._chase && G.level && G.level.gates) {
+      for (var gz = 0; gz < G.level.gates.length && !onGatePlate; gz++) {
+        var gzo = G.level.gates[gz];
+        if (gzo.open || gzo.type !== "switch") continue;
+        for (var gzp = 0; gzp < gzo.plates.length; gzp++) {
+          if (aabb(p, gzo.plates[gzp])) { onGatePlate = true; break; }
+        }
+      }
+    }
+    if (G._chase && G.state === "play" && !G._arenaWait && !onGatePlate) {
+      G._chase.spd = Math.min(G._chase.spdMax, G._chase.spd + 0.0006);
+      G._chase.x += G._chase.spd;
+      // only actually lava-colored ground can catch you — a dino up on a tall platform is briefly
+      // safe from the x-based catch, but that same platform is crumbling underneath them (below),
+      // so climbing high only buys a little time before they fall back down into reach
+      var nearGround = (p.y + p.h) >= GROUND_Y - 75;
+      if (nearGround && p.x < G._chase.x + 30) lavaCatch(p);
+      crumbleBehindLava();
+      crumbleIfLingering(p);
     }
 
     fx();
@@ -4443,19 +4731,153 @@
     document.getElementById("bossbar").hidden = true;
   }
 
-  // end of dialogue: normally the boss trudges off ("leave"); on L6 the beaten Anky
-  // is now a friend, so skip straight to "roam" and let him walk along with you.
+  // solo: pick ONE other species to stand in as a talking companion for L9/L10's mid-run cutscenes
+  // (co-op doesn't need this — real partners speak for themselves live). Prefers an ALREADY-unlocked
+  // species (in real play you've always got at least one by L9); if truly nothing else is unlocked
+  // yet (e.g. a dev-jump straight here) it still picks some other species purely for the cutscene —
+  // this never grants or marks it unlocked — because a dialogue that falls through to the hero's
+  // own voice for BOTH sides of the back-and-forth ("ally" lines with no one else around) reads as
+  // a broken monologue, not an intentional solo beat.
+  function pickTrappedCompanion() {
+    if (NET.on) return null;
+    var mine = (G.player && G.player.char) || "rex";
+    var order = ["jesus", "anky", "langhals", "spino", "rex"];
+    var unlocked = availChars();
+    for (var i = 0; i < order.length; i++) {
+      var c = order[i];
+      if (c !== mine && unlocked[c]) return { species: c, x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
+    }
+    for (var j = 0; j < order.length; j++) {
+      if (order[j] !== mine) return { species: order[j], x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
+    }
+    return null;   // mine isn't even a valid species — shouldn't happen, but fall through to hero rather than crash
+  }
+
+  // Generic boss-less ending: reaching the arena with no boss to fight either triggers a panic
+  // chat at a dead-end rock (L9 — see triggerTrappedBlast/maybeTriggerTrappedBlast, gated to that
+  // level specifically) or, for any other boss-less level, just plays that level's STORY script as
+  // a plain arrival reaction before the normal feast+door roam — same mechanism, no rock needed.
+  function startTrapped() {
+    G.state = "outro";
+    G.hazards = [];
+    G.leftWall = null;
+    G._chase = null;                         // the forced lava-scroll stops the moment you reach the arena
+    if (!G._spectator) { G.player.koT = 0; G.player.vx = 0; G.player.vy = 0; G.player.x = G.level.arenaX + 60; }
+    var gx = G.level.feastX, dx = G.level.doorX;
+    G.cutNpc = pickTrappedCompanion();
+    if (G.cutNpc) { G.cutNpc.x = G.level.arenaX + 95; G.cutNpc.y = GROUND_Y - 48; G.cutNpc.facing = 1; }
+    G.outro = {
+      t: 0, phase: "talk", total: 400, joy: 0, cine: 1, speaking: 0, leaveT: 0,
+      script: STORY[G.levelIndex] || STORY[0], line: 0, lineT: 0,
+      feast: { x: gx, y: GROUND_Y, big: true, bites: 0, t: 0, pop: 0, ate: false },
+      door: { x: dx, y: GROUND_Y, open: 0, shown: 0, entered: 0 },
+      lock: 0, celebrated: 0, farX: G.level.arenaX + ARENA_W,
+      blastLine: 3, blasted: false
+    };
+    document.getElementById("bossbar").hidden = true;
+  }
+  // the blinding flash that blows the dead-end rock apart
+  function triggerTrappedBlast() {
+    if (G.level && G.level.blockRock) G.level.blockRock.solid = false;
+    G._blastT = 50;
+    shake = REDUCED ? 0 : 16;
+    var bx = G.level ? G.level.arenaX : 0;
+    burst(bx, GROUND_Y - 80, "#FFFBE0", 36, 3.2);
+    burst(bx, GROUND_Y - 80, "#FFD873", 24, 2.6);
+    if (audio.power) audio.power();
+    if (audio.bosshit) audio.bosshit();
+  }
+
+  // end of dialogue: normally the boss trudges off ("leave"); on L6 the beaten Anky is now a
+  // friend (skip to "roam"); L9 has no boss at all to trudge anywhere, same deal.
   function endTalkPhase(o) {
-    o.phase = (G.levelIndex === 5 && G.spino) ? "roam" : "leave";
+    o.phase = ((G.levelIndex === 5 && G.spino) || !G.spino) ? "roam" : "leave";
     o.t = 0; o.leaveT = 0; hideDialogue();
     if (o.phase === "roam" && G.player) floatText(G.player.x + G.player.w / 2, G.player.y - 28, "lauf zum Fleisch! →", "#FFE9C6");
+  }
+  // L9: the instant the "the rock is gone!" line comes up, blow the rock apart for real
+  function maybeTriggerTrappedBlast(o) {
+    if (G.levelIndex === 8 && !o.blasted && o.line === (o.blastLine != null ? o.blastLine : 3)) {
+      o.blasted = true; triggerTrappedBlast();
+    }
+  }
+
+  // ---------------------------------------------------------------- L10: the mid-level lava-river
+  // scene. A THIRD kind of cutscene (not an opening, not the ending-outro) — triggered in updatePlay
+  // when the player reaches G.level.river. Own tiny state machine, modeled on updateOpening(), kept
+  // separate on purpose: reusing "opening" mid-level risked confusing co-op peer-phase logic that
+  // assumes `ph === "opening"` means "hasn't started the level yet".
+  function startRiverScene() {
+    G.state = "river";
+    if (G.level && G.level.river) G.level.river.triggered = true;
+    if (!G._spectator) { G.player.vx = 0; G.player.koT = 0; }
+    G.cutNpc = pickTrappedCompanion();
+    if (G.cutNpc) { G.cutNpc.x = (G.player ? G.player.x : 0) - 70; G.cutNpc.y = GROUND_Y - 48; G.cutNpc.facing = 1; }
+    G.riverScene = { script: RIVER_SCENES[G.levelIndex] || [], line: 0, lineT: 0, cine: 0, partLine: 3, parted: false };
+    document.getElementById("bossbar").hidden = true;
+  }
+  function updateRiverScene() {
+    var o = G.riverScene, p = G.player, n = G.cutNpc;
+    if (!o) { G.state = "play"; return; }
+    o.cine += (1 - o.cine) * 0.1;
+    if (n) n.t = (n.t || 0) + 1;
+    if (!G._spectator && p) {
+      p.vx = 0; p.vy += GRAV; if (p.vy > 16) p.vy = 16;
+      p.y += p.vy; p.onGround = false; collidePlayer(p.y + p.h - p.vy);
+      p.blinkAt--; if (p.blinkAt <= 0) { p.blink = 7; p.blinkAt = 130 + Math.random() * 150; }
+      if (p.blink > 0) p.blink--;
+    }
+    var cur = o.script[o.line];
+    o.lineT++;
+    if (cur) {
+      var sp = dlgSpeaker(cur.who);
+      if (o.lineT >= 6 && o.lineT < 6 + Math.min(80, 30 + cur.txt.length * 1.3)) o.speaking = 3;
+      showDialogueLine(sp.name, cur.txt, sp.col, "riv" + o.line + "|" + cur.txt, cur.who, sp.shade);
+      maybeRiverPart(o);
+      if (o.lineT > 104 + cur.txt.length * 3.4) {
+        if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; audio.hop(); }
+        else endRiverScene();
+      }
+    } else endRiverScene();
+    fx();
+  }
+  // the instant the "seht nur — das Licht!" line comes up, part the river for real
+  function maybeRiverPart(o) {
+    if (!o.parted && o.line === (o.partLine != null ? o.partLine : 3)) { o.parted = true; partRiver(); }
+  }
+  function riverAdvance() {
+    var o = G.riverScene;
+    if (!o || o.lineT < 10) return false;
+    if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; audio.hop(); maybeRiverPart(o); }
+    else endRiverScene();
+    return true;
+  }
+  function endRiverScene() {
+    hideDialogue();
+    G.cutNpc = null; G.riverScene = null;
+    if (G.player) G.player.facing = 1;
+    G.state = "play";
+    if (G.player) floatText(G.player.x + G.player.w / 2, G.player.y - 24, "Los geht's! →", "#FFE9C6");
+  }
+  // the miracle: insert the (until now withheld) bridge steps for real, and kick off the light-beam
+  // + flash visuals. Reuses the same blast-flash timer as L9's rock explosion — same "blinding
+  // light" language, so the two moments read as the same kind of event.
+  function partRiver() {
+    var r = G.level && G.level.river; if (!r || r.crossed) return;
+    r.crossed = true; r.partT = 60;
+    for (var i = 0; i < r.steps.length; i++) G.level.plats.push(r.steps[i]);
+    G._blastT = 50; G._jesusT = 70;
+    shake = REDUCED ? 0 : 10;
+    burst(r.x + r.w / 2, GROUND_Y - 60, "#FFFBE0", 30, 2.8);
+    burst(r.x + r.w / 2, GROUND_Y - 60, "#FFD873", 20, 2.4);
+    if (audio.power) audio.power();
   }
 
   // advance the story dialogue on a tap / jump
   function outroAdvance() {
     var o = G.outro;
     if (!o || o.phase !== "talk" || o.lineT < 10) return false;   // ignore taps during the bubble pop-in
-    if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; audio.hop(); }
+    if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; audio.hop(); maybeTriggerTrappedBlast(o); }
     else endTalkPhase(o);
     return true;
   }
@@ -4466,6 +4888,7 @@
     // a story NPC stands in the scene where the opening needs one
     if (i === 3 || i === 4) G.cutNpc = { type: "langi", x: 300, y: GROUND_Y - 96, w: 60, h: 96, t: 0, caged: true, cry: 1 };
     else if ((i === 6 || i === 7) && !(G.player && G.player.char === "anky")) G.cutNpc = { type: "anky", x: 44, y: GROUND_Y - 46, w: 74, h: 46, t: 0, facing: 1, caged: false, cry: 0 };
+    else if (i === 8 || i === 9) { G.cutNpc = pickTrappedCompanion(); if (G.cutNpc) { G.cutNpc.x = 44; G.cutNpc.facing = 1; } }
     else G.cutNpc = null;
     G.opening = { script: OPENINGS[i], line: 0, lineT: 0, cine: 0, t: 0 };
     document.getElementById("bossbar").hidden = true;
@@ -4476,9 +4899,9 @@
     o.t++; o.cine += (1 - o.cine) * 0.1;
     if (o.speaking > 0) o.speaking--;
     if (n) n.t++;
-    var ankyTalk = n && n.type === "anky";
+    var ankyTalk = n && (n.type === "anky" || n.species);
     if (ankyTalk) {
-      // Anky (behind) and the hero space out and face each other for the chat
+      // the companion (behind) and the hero space out and face each other for the chat
       p.vx = 0;
       p.x += (240 - p.x) * 0.14;
       p.facing = -1;
@@ -4528,6 +4951,7 @@
   function dialogueAdvance() {
     if (G.state === "outro" && typeof outroAdvance === "function") return outroAdvance();
     if (G.state === "opening" && typeof openingAdvance === "function") return openingAdvance();
+    if (G.state === "river" && typeof riverAdvance === "function") return riverAdvance();
     return false;
   }
 
@@ -4546,7 +4970,7 @@
 
   // after walking through the door: award any unlock for this level, then the clear screen
   function outroFinish() {
-    var grant = G.levelIndex === 2 ? "spino" : G.levelIndex === 4 ? "langhals" : G.levelIndex === 7 ? "anky" : null;
+    var grant = G.levelIndex === 2 ? "spino" : G.levelIndex === 4 ? "langhals" : G.levelIndex === 7 ? "anky" : G.levelIndex === 9 ? "jesus" : null;
     if (grant && unlockChar(grant, G.mode)) { showUnlock(grant, function () { showClear(); }); return; }
     showClear();
   }
@@ -4626,9 +5050,11 @@
     if (G._spectator && (o.phase === "leave" || o.phase === "roam")) {
       hideDialogue();
       o.phase = "roam";
-      s.phase = "stalk";
-      if (G.levelIndex === 5) { s.facing = 1; s.downAmt = 0; s.y = GROUND_Y - s.h; }   // L6: Anky's a friend, he stays
-      else { s.facing = -1; if (s.x + s.w > G.level.arenaX - 60) s.x -= (G.levelIndex === 2 ? 1.7 : 2.8); }
+      if (s) {   // L9 has no boss at all to trudge off
+        s.phase = "stalk";
+        if (G.levelIndex === 5) { s.facing = 1; s.downAmt = 0; s.y = GROUND_Y - s.h; }   // L6: Anky's a friend, he stays
+        else { s.facing = -1; if (s.x + s.w > G.level.arenaX - 60) s.x -= (G.levelIndex === 2 ? 1.7 : 2.8); }
+      }
       var ctlDone = netLivePeers().some(function (pe) {
         return pe.role !== "screen" && (pe.ph === "clear" || (typeof pe.lvl === "number" && pe.lvl > G.levelIndex));
       });
@@ -4661,9 +5087,14 @@
       if (!o._roared && gk > 0.55) { o._roared = 1; audio.roarBig(); }
     } else if (o.phase === "talk") {
       o.farX = G.level.arenaX + ARENA_W;
-      // locked exactly on the marks — no per-screen easing race
-      s.x = tauntX; s.phase = "stalk"; s.downAmt = 0; s.facing = 1;
-      p.x = rexTalkX; p.vx = 0; p.facing = -1;
+      // locked exactly on the marks — no per-screen easing race (L9 has no boss to lock in place)
+      if (s) {
+        s.x = tauntX; s.phase = "stalk"; s.downAmt = 0; s.facing = 1;
+        p.x = rexTalkX; p.vx = 0; p.facing = -1;
+      } else {
+        // L9: no boss to face off with — just hold at the dead-end rock, staring at the wall
+        p.x = G.level.arenaX + 60; p.vx = 0; p.facing = 1;
+      }
       if (o.line == null) o.line = 0;
       var cur = o.script[o.line];
       o.lineT++;
@@ -4675,7 +5106,7 @@
         if (isBoss && o.lineT === 12) audio.growl(o.line === 0);
         if ((cur.who === "rex" || cur.who === "hero") && o.lineT === 10) audio.hop();
         if (o.lineT > 104 + cur.txt.length * 3.4) {
-          if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; }
+          if (o.line < o.script.length - 1) { o.line++; o.lineT = 0; maybeTriggerTrappedBlast(o); }
           else endTalkPhase(o);
         }
       }
@@ -4871,7 +5302,8 @@
   // spotlight + foot ring under whoever is speaking (the words live in the DOM bubble)
   function drawSpeech() {
     var cut = (G.state === "outro" && G.outro && G.outro.phase === "talk") ? G.outro
-      : (G.state === "opening" && G.opening) ? G.opening : null;
+      : (G.state === "opening" && G.opening) ? G.opening
+        : (G.state === "river" && G.riverScene) ? G.riverScene : null;
     if (!cut || !cut.script) return;
     var o = cut;
     var cur = o.script[o.line];
@@ -4983,13 +5415,14 @@
   // during a 3-way (or 2-way) outro talk: pan toward whoever is speaking, softened by the
   // group centre, then eased into G._camTalkX so it glides between speakers instead of snapping
   function outroTalkCamRaw() {
-    var o = G.outro; if (!o || !o.script || !G.spino || !G.player) return null;
+    var o = G.outro; if (!o || !o.script || !G.player) return null;
     var cur = o.script[o.line]; if (!cur) return null;
     var sp = dlgSpeaker(cur.who);
     var ent = sp && sp.ent;
-    var scx = ent ? (ent.x + ent.w / 2) : (G.spino.x + G.spino.w / 2);
-    var lft = G.spino.x, rgt = G.player.x + G.player.w;
-    var an = (G.cutNpc && G.cutNpc.type === "anky") ? G.cutNpc : null;
+    // L9 has no boss to anchor on — frame the player (+ companion, if any) instead
+    var lft = G.spino ? G.spino.x : G.player.x, rgt = G.player.x + G.player.w;
+    var scx = ent ? (ent.x + ent.w / 2) : (lft + rgt) / 2;
+    var an = (G.cutNpc && (G.cutNpc.type === "anky" || G.cutNpc.species)) ? G.cutNpc : null;
     if (an) { lft = Math.min(lft, an.x); rgt = Math.max(rgt, an.x + an.w); }
     var groupMid = (lft + rgt) / 2;
     return (scx * 0.6 + groupMid * 0.4) - VIEW_W * 0.5;
@@ -5032,7 +5465,7 @@
       var pf = netPartnerDino();
       if (pf) camFocus = { x: pf.d.x, w: 42 };
     }
-    if (G.state === "opening") {
+    if (G.state === "opening" || G.state === "river") {
       var mid = G.cutNpc ? (p.x + p.w / 2 + G.cutNpc.x + G.cutNpc.w / 2) / 2 : (p.x + p.w / 2);
       var to = mid - VIEW_W * 0.5;
       return Math.max(0, Math.min(to, G.level.endX - VIEW_W));
@@ -5055,6 +5488,11 @@
       if (hi <= lo) return G.level.arenaX + ARENA_W / 2 - half;   // view wider than arena
       return Math.max(lo, Math.min(camFocus.x + camFocus.w / 2 - half, hi));
     }
+    // L9 "Der Ausbruch" uses the exact same camera as every other level now — no special-casing.
+    // (Two earlier attempts to bias the camera toward showing the lava — a forward-cap, then a
+    // smaller forward-visibility ratio — either did nothing in the common case or caused blind
+    // landings into gaps/crumbled platforms. The lava's visibility is handled entirely camera-
+    // independently now, by drawLavaThreat()'s screen-space threat meter.)
     var t = p.x + p.w / 2 - VIEW_W * 0.4;
     return Math.max(0, Math.min(t, G.level.endX - VIEW_W));
   }
@@ -5120,9 +5558,10 @@
     ctx.translate(-cx, -cy);
     drawPlatforms(cx, cy);
     drawGates();
+    if (G.level.river) drawLavaRiver(cx, cy);
     drawCheckpoints();
     drawCollectibles();
-    if (G.state !== "boss" && !G.spino) drawArenaGate();
+    if (G.state !== "boss" && !G.spino && LEVELS[G.levelIndex].boss) drawArenaGate();
     drawGiantMeat();
     drawDoor();
     if (G.cutNpc) drawCutNpc();
@@ -5131,6 +5570,8 @@
     if (G.spino) drawSpino();
     drawSpeech();
     drawHazards();
+    if (G._blastT > 0) drawBlastBeam(cx, cy);
+    if (G._jesusT > 0) drawJesusDescent(cx, cy);
     drawParticles();
     drawRemoteDinos();
     drawChar();
@@ -5138,6 +5579,8 @@
     ctx.restore();
 
     if (G.state === "boss") drawArenaEdges(cx, cy);
+    if (G._chase && G.state === "play") drawLavaThreat();
+    if (G._blastT > 0) drawBlastFlash();
 
     drawRain();
 
@@ -5197,7 +5640,7 @@
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     var li = G.levelIndex;
     var night = li === 4;
-    var noSun = li === 6 || li === 7;          // Aschenpass + Feuergipfel: overcast / choked with ash — no sun disc
+    var noSun = li === 6 || li === 7 || li === 8 || li === 9;   // Aschenpass + Feuergipfel + Der Ausbruch + Der Lavafluss: no sun disc
     var ox = VIEW_W * 0.72, oy = VIEW_H * 0.2;
     ctx.save();
     if (li === 6) {
@@ -5206,12 +5649,13 @@
       var vs = ctx.createRadialGradient(ox, VIEW_H * 0.2, 6, ox, VIEW_H * 0.2, 150);
       vs.addColorStop(0, "#D9CFC0"); vs.addColorStop(1, "rgba(217,207,192,0)");
       ctx.fillStyle = vs; ctx.fillRect(ox - 150, VIEW_H * 0.2 - 150, 300, 300);
-    } else if (li === 7) {
-      // no sun — just a dull glow low on the horizon (the crater)
-      ctx.globalAlpha = 0.5;
-      var cg = ctx.createLinearGradient(0, VIEW_H * 0.66, 0, VIEW_H);
-      cg.addColorStop(0, "rgba(120,30,18,0)"); cg.addColorStop(1, "rgba(150,40,22,.5)");
-      ctx.fillStyle = cg; ctx.fillRect(0, VIEW_H * 0.66, VIEW_W, VIEW_H * 0.34);
+    } else if (li === 7 || li === 8 || li === 9) {
+      // no sun — just a dull glow low on the horizon (the crater); L9/L10 glow hotter/brighter
+      var hot = li === 8 || li === 9;
+      ctx.globalAlpha = hot ? 0.68 : 0.5;
+      var cg = ctx.createLinearGradient(0, VIEW_H * 0.6, 0, VIEW_H);
+      cg.addColorStop(0, "rgba(120,30,18,0)"); cg.addColorStop(1, hot ? "rgba(255,90,30,.65)" : "rgba(150,40,22,.5)");
+      ctx.fillStyle = cg; ctx.fillRect(0, VIEW_H * 0.6, VIEW_W, VIEW_H * 0.4);
     } else if (night) {
       // stars
       ctx.globalAlpha = 0.7; ctx.fillStyle = "#DCE4FF";
@@ -5313,8 +5757,8 @@
       return;
     }
 
-    if (idx === 7) {
-      // Feuergipfel: a big central volcano that ERUPTS, dark ridges lit from below, drifting embers
+    if (idx === 7 || idx === 8 || idx === 9) {
+      // Feuergipfel / Der Ausbruch / Der Lavafluss: a big central volcano that ERUPTS, dark ridges lit from below, drifting embers
       var er = G._eruptT || 0;
       var vpx = VIEW_W * 0.5 - cx * 0.08;
       // horizon lava glow, pulsing with the eruption
@@ -5484,7 +5928,9 @@
     { earth: "#7A5238", cap: "#4E9E57", trim: "#63BA69", mode: "grass" },   // 4 Gewitternacht
     { earth: "#6A3E2E", cap: "#8A4A34", trim: "#A85E42", mode: "rock" },    // 5 Knochenschlucht — red rock, no grass
     { earth: "#463F38", cap: "#6C625A", trim: "#867B70", mode: "ash" },     // 6 Aschenpass — grey ash + glowing flecks
-    { earth: "#2A1614", cap: "#4A2420", trim: "#6E332B", mode: "ember" }    // 7 Feuergipfel — charred black + ember lines
+    { earth: "#2A1614", cap: "#4A2420", trim: "#6E332B", mode: "ember" },   // 7 Feuergipfel — charred black + ember lines
+    { earth: "#1E0F0C", cap: "#5A1E16", trim: "#C4471E", mode: "ember" },   // 8 Der Ausbruch — near-black rock, hot orange cracks
+    { earth: "#200F0A", cap: "#601E12", trim: "#E05A1E", mode: "ember" }    // 9 Der Lavafluss — same family, slightly hotter
   ];
   function drawPlatforms(cx, cy) {
     var list = G.level.plats;
@@ -5493,6 +5939,38 @@
       var pl = list[i];
       if (pl.x - cx > VIEW_W + 80 || pl.x + pl.w - cx < -80) continue;
       if (pl.gate) continue;   // co-op gate doors / bridge steps — drawn separately by drawGates()
+      if (pl._gone) continue;   // L9: crumbled away behind the lava — just gone
+      ctx.save();
+      if (pl._crumbling) {
+        // L9: shake + darken as it's about to give way. SYMMETRIC jitter only, centered on the
+        // plat's real position — a one-directional sink here looked right but visually dropped the
+        // platform BELOW where collision still had it (the player's feet stayed put, the drawn
+        // ground sank out from under them = "running in the air"). Never offset the average position.
+        var cfr = Math.max(0, pl._crumbleT) / (pl._crumbleT0 || 22);
+        ctx.globalAlpha = 0.3 + cfr * 0.7;
+        var csh = (1 - cfr) * 3;
+        ctx.translate((Math.random() - 0.5) * csh, (Math.random() - 0.5) * csh);
+      }
+      if (pl.rock) {
+        if (!pl.solid) { ctx.restore(); continue; }    // blown apart by triggerTrappedBlast() — just gone
+        var rcx = pl.x + pl.w / 2, rcy = pl.y + pl.h / 2;
+        ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.beginPath(); ctx.ellipse(rcx, pl.y + pl.h + 4, pl.w * 0.6, 7, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#241210";
+        ctx.beginPath();
+        ctx.moveTo(pl.x + 4, pl.y + pl.h);
+        ctx.lineTo(pl.x - 4, pl.y + pl.h * 0.5);
+        ctx.lineTo(pl.x + 10, pl.y + 6);
+        ctx.lineTo(pl.x + pl.w * 0.45, pl.y - 10);
+        ctx.lineTo(pl.x + pl.w * 0.8, pl.y + 4);
+        ctx.lineTo(pl.x + pl.w + 6, pl.y + pl.h * 0.45);
+        ctx.lineTo(pl.x + pl.w - 2, pl.y + pl.h);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = "rgba(255,110,50,.8)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pl.x + pl.w * 0.3, pl.y + 10); ctx.lineTo(rcx - 4, rcy); ctx.lineTo(pl.x + pl.w * 0.4, pl.y + pl.h - 14); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pl.x + pl.w * 0.7, pl.y + 2); ctx.lineTo(rcx + 6, rcy + 10); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       if (pl.slab) {
         // a thin solid rock slab (tunnel ceiling / overhang) — drawn as itself, not full-depth earth
         ctx.fillStyle = P.earth;
@@ -5501,6 +5979,7 @@
         rr(pl.x, pl.y + pl.h - 6, pl.w, 6, 3); ctx.fill();
         ctx.fillStyle = P.cap;
         for (var sk = pl.x + 8; sk < pl.x + pl.w - 8; sk += 22) ctx.fillRect(sk, pl.y + 3, 5, 3);
+        ctx.restore();
         continue;
       }
       var isGround = pl.solid && pl.y >= GROUND_Y;          // full-depth earth vs a floating block
@@ -5539,6 +6018,7 @@
         ctx.fillStyle = "rgba(255,120,60,.28)";
         for (var az = pl.x + 34; az < pl.x + pl.w - 20; az += 88) ctx.fillRect(az, pl.y + 3, 2, 5);
       }
+      ctx.restore();
     }
   }
 
@@ -5583,6 +6063,157 @@
     ctx.fillRect(rx, 0, 30, gy);
   }
 
+  // L9: the lava's REAL, always-reliable visual. Earlier attempts tied this to the world-space
+  // camera position (chase.x - cx) and kept fighting the camera to stay on screen — a losing battle
+  // (the gap during normal safe play, ~150-400px, is routinely bigger than the ~0.4*VIEW_W margin
+  // the normal follow camera leaves behind the player, so the world-space wall was simply off-screen
+  // most of the time no matter how big/bright it was drawn). This is SCREEN-SPACE instead: a molten
+  // mass anchored to the bottom-left CORNER of the screen (never the world), sized purely by the
+  // real danger value (how close the lava actually is) — so it is ALWAYS legible, and it can never
+  // cost forward sight distance since it doesn't touch the camera.
+  function drawLavaThreat() {
+    var c = G._chase, p = G.player; if (!c || !p) return;
+    var gap = p.x - c.x;                                // 30 = death; comfortably far = no threat
+    var danger = 1 - Math.max(0, Math.min(1, (gap - 30) / 460));
+    if (danger <= 0.015) return;
+    ctx.save();
+    var rx = 36 + danger * VIEW_W * 0.74;
+    var ry = 36 + danger * VIEW_H * 0.58;
+    var cxp = 0, cyp = VIEW_H;    // bottom-left corner of the SCREEN, not the world
+    var grd = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, Math.max(rx, ry));
+    grd.addColorStop(0, "rgba(255,225,140,1)");
+    grd.addColorStop(0.3, "rgba(255,150,40,.96)");
+    grd.addColorStop(0.62, "rgba(205,50,16,.8)");
+    grd.addColorStop(1, "rgba(205,50,16,0)");
+    ctx.fillStyle = grd;
+    // a lumpy quarter-blob (not a clean ellipse), its edge bubbling with the same motion language
+    // as the world-space lava elsewhere, so the two visuals feel like the same substance
+    ctx.beginPath();
+    ctx.moveTo(cxp, cyp);
+    var steps = 22;
+    for (var i = 0; i <= steps; i++) {
+      var ang = (Math.PI / 2) * (i / steps);
+      var wob = 1 + Math.sin(ang * 5 + G.time * 3.4) * 0.09 + Math.sin(ang * 9 + G.time * 5.6) * 0.05;
+      ctx.lineTo(cxp + Math.cos(ang) * rx * wob, cyp - Math.sin(ang) * ry * wob);
+    }
+    ctx.closePath();
+    ctx.fill();
+    // bright pulsing leading rim
+    ctx.globalAlpha = 0.7 + Math.sin(G.time * 7) * 0.3;
+    ctx.strokeStyle = "rgba(255,235,180,.9)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (var j = 0; j <= steps; j++) {
+      var ang2 = (Math.PI / 2) * (j / steps);
+      var wob2 = 1 + Math.sin(ang2 * 5 + G.time * 3.4) * 0.09 + Math.sin(ang2 * 9 + G.time * 5.6) * 0.05;
+      var ex = cxp + Math.cos(ang2) * rx * wob2, ey = cyp - Math.sin(ang2) * ry * wob2;
+      if (j === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
+    }
+    ctx.stroke();
+    // rising embers off the mass, scaled by danger
+    ctx.globalAlpha = 1;
+    var emberN = Math.round(3 + danger * 6);
+    for (var e = 0; e < emberN; e++) {
+      var eang = (Math.PI / 2) * ((e + 0.5) / emberN);
+      var baseEx = cxp + Math.cos(eang) * rx * 0.75, baseEy = cyp - Math.sin(eang) * ry * 0.75;
+      var cyc = (G.time * 50 + e * 53) % 120;
+      ctx.globalAlpha = Math.max(0, (1 - cyc / 120) * danger);
+      ctx.fillStyle = (e % 2) ? "#FFD873" : "#FF9A4A";
+      ctx.beginPath(); ctx.arc(baseEx + Math.sin(G.time * 2 + e) * 6, baseEy - cyc, 2.4, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // L9: the screen-space whiteout half of the dead-end-rock blast (world beam is drawBlastBeam)
+  function drawBlastFlash() {
+    var a = Math.min(1, G._blastT / 50) * (G._blastT > 30 ? 1 : G._blastT / 30);
+    if (a <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    ctx.restore();
+  }
+
+  // L9/L10: the blinding beam + explosion — blows apart the dead-end rock (L9) OR heralds the lava
+  // river parting (L10). NOTE: also called from inside render()'s ctx.translate(-cx,-cy) block —
+  // draw in WORLD coords.
+  function drawBlastBeam(cx, cy) {
+    if (!(G._blastT > 0)) return;
+    var bx = (G.level && G.level.blockRock) ? G.level.blockRock.x + G.level.blockRock.w / 2
+      : (G.level && G.level.river) ? G.level.river.x + G.level.river.w / 2
+        : (G.level ? G.level.arenaX + 140 : 0);
+    var a = Math.min(1, G._blastT / 36);
+    ctx.save();
+    ctx.globalAlpha = a;
+    var gx = bx, gy = GROUND_Y;
+    var grd = ctx.createLinearGradient(gx, 0, gx, gy);
+    grd.addColorStop(0, "rgba(255,255,255,.95)");
+    grd.addColorStop(1, "rgba(255,230,160,.15)");
+    ctx.fillStyle = grd;
+    ctx.fillRect(gx - 34, 0, 68, gy);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath(); ctx.arc(gx, gy - 70, 60 * a, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  // L10: the static lava-river hazard. Fills the gap with molten lava until partRiver() fires, then
+  // visually recedes toward both banks over `partT` frames revealing the bridge underneath it.
+  function drawLavaRiver(cx, cy) {
+    var r = G.level && G.level.river; if (!r) return;
+    var pull = r.crossed ? Math.max(0, Math.min(1, 1 - (r.partT || 0) / 60)) : 0;
+    if (r.crossed && pull >= 1) return;    // fully parted — the bridge speaks for itself
+    var gy = GROUND_Y;
+    var inset = pull * (r.w / 2 - 20);
+    var lx = r.x + inset, rx = r.x + r.w - inset;
+    if (rx <= lx) return;
+    if (rx - cx < -60 || lx - cx > VIEW_W + 60) return;
+    ctx.save();
+    var grd = ctx.createLinearGradient(0, gy - 50, 0, gy + 80);
+    grd.addColorStop(0, "rgba(255,215,120,1)");
+    grd.addColorStop(0.3, "rgba(255,120,30,1)");
+    grd.addColorStop(1, "rgba(110,18,10,1)");
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.moveTo(lx, gy + 80);
+    for (var bx2 = lx; bx2 <= rx; bx2 += 10) {
+      var bump = Math.sin(bx2 * 0.06 + G.time * 4) * 6 + Math.sin(bx2 * 0.14 + G.time * 2.4) * 4;
+      ctx.lineTo(bx2, gy - 26 + bump);
+    }
+    ctx.lineTo(rx, gy + 80);
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "rgba(255,140,40,.5)";
+    ctx.fillRect(lx - 20, gy - 66, (rx - lx) + 40, 46);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  // L10: a simple descending robed figure with a halo, arms spread, inside a light beam — reads as
+  // "someone up there parted the lava for us" without needing a whole new sprite rig.
+  function drawJesusDescent(cx, cy) {
+    if (!(G._jesusT > 0)) return;
+    var r = G.level && G.level.river; if (!r) return;
+    var bx = r.x + r.w / 2, gy = GROUND_Y;
+    var a = Math.min(1, G._jesusT / 70);
+    ctx.save();
+    ctx.globalAlpha = a;
+    var fy = gy - 92 + Math.sin(G.time * 2) * 4;
+    ctx.fillStyle = "rgba(255,250,235,.95)";
+    ctx.beginPath();
+    ctx.moveTo(bx, fy - 34);
+    ctx.lineTo(bx - 24, fy + 28);
+    ctx.lineTo(bx + 24, fy + 28);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, fy - 40, 10, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(255,250,235,.95)"; ctx.lineWidth = 6; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx - 32, fy - 20);
+    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx + 32, fy - 20);
+    ctx.stroke();
+    ctx.strokeStyle = "#FFE7A6"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(bx, fy - 52, 13, 5, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
   // a leafy frond — the snack for a plant-eating player
   function drawFrond(t) {
     ctx.save();
@@ -5919,7 +6550,7 @@
   // the fast-hitting Anky boss fight. Cutscenes / KO / ghost / remote never flash.
   function invulnGhost(p) {
     if (!p || p._remote || p.koT > 0 || p.dead || p.ghost || p._ghostRemote) return 1;
-    if (G.state === "opening" || G.state === "outro") return 1;
+    if (G.state === "opening" || G.state === "outro" || G.state === "river") return 1;
     if (p.invuln > 0 && p.invuln < 130) return (Math.floor(p.invuln / 4) % 2 === 0) ? 0.34 : 0.9;
     return 1;
   }
@@ -5933,6 +6564,7 @@
     if (c === "spino") return drawPlayerSpino();
     if (c === "langhals") return drawPlayerLong();
     if (c === "anky") return drawPlayerAnky();
+    if (c === "jesus") return drawPlayerJesus();
     return drawRex();
   }
 
@@ -5959,6 +6591,73 @@
     });
     if (_tm && ctx.setTransform) ctx.setTransform(_tm);
     ctx.globalAlpha = _ga;
+    ctx.restore();
+  }
+
+  // L10 unlock: a simple robed figure — the player's chosen color shows up only on the sash, so
+  // "Jesus" stays recognizable no matter which swatch you've picked. Uses the shared charSetup()
+  // helper (one ctx.save() there, one matching ctx.restore() here — no extra nested save/restore,
+  // to avoid the exact class of transform-stack bug the Anky boss had earlier in this project).
+  function drawPlayerJesus() {
+    var S = charSetup(); if (!S) return;
+    var p = S.p, t = G.time;
+    var ROBE = "#F3EADA", ROBE_D = "#D9C7A6", SKIN = "#D9A876", HAIR = "#6B4A30";
+    var sway = S.moving ? Math.sin(p.run) * 4 : (S.air ? -3 : Math.sin(t * 1.6) * 1.2);
+    var bob = S.moving ? Math.abs(Math.sin(p.run)) * 2 : Math.sin(t * 2) * 0.6;
+
+    ctx.fillStyle = "#8A6A46";
+    ctx.beginPath(); ctx.ellipse(-6 + sway * 0.3, -2, 7, 3, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6 - sway * 0.3, -2, 7, 3, 0, 0, 7); ctx.fill();
+
+    // the robe — one continuous trapezoid, hem swaying with the walk/air cycle
+    ctx.fillStyle = ROBE; ctx.strokeStyle = S.OUT; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-9, -44 - bob);
+    ctx.quadraticCurveTo(-22 + sway, -20, -20 + sway * 1.4, -2);
+    ctx.lineTo(20 - sway * 1.4, -2);
+    ctx.quadraticCurveTo(22 - sway, -20, 9, -44 - bob);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = ROBE_D;
+    ctx.beginPath();
+    ctx.moveTo(0, -40 - bob); ctx.quadraticCurveTo(-4, -20, -3 + sway * 0.4, -2);
+    ctx.lineTo(3 - sway * 0.4, -2); ctx.quadraticCurveTo(4, -20, 0, -40 - bob);
+    ctx.closePath(); ctx.fill();
+    // sash — the ONE place your chosen colour shows up
+    ctx.strokeStyle = S.A; ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-13, -23); ctx.lineTo(13, -19); ctx.stroke();
+
+    // arms (sleeves), gently spread
+    var armSw = S.moving ? Math.sin(p.run) * 6 : (S.air ? -10 : 0);
+    ctx.strokeStyle = ROBE_D; ctx.lineWidth = 7; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-9, -38 - bob); ctx.lineTo(-20 + armSw * 0.3, -24 - bob); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(9, -38 - bob); ctx.lineTo(20 - armSw * 0.3, -24 - bob); ctx.stroke();
+    ctx.fillStyle = SKIN;
+    ctx.beginPath(); ctx.arc(-20 + armSw * 0.3, -24 - bob, 4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(20 - armSw * 0.3, -24 - bob, 4, 0, 7); ctx.fill();
+
+    // head, hair, beard, halo
+    var hb = S.moving ? Math.sin(p.run * 2) * 1.4 : Math.sin(t * 2) * 0.8;
+    var hx = 0, hy = -48 + hb - bob;
+    ctx.fillStyle = SKIN; ctx.strokeStyle = S.OUT; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(hx, hy, 12, 12, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = HAIR;
+    ctx.beginPath(); ctx.ellipse(hx, hy - 5, 12, 9, 0, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx - 11, hy + 4, 4, 9, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx + 11, hy + 4, 4, 9, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(hx, hy + 7, 8, 7, 0, 0, Math.PI); ctx.fill();
+    if (p.blink > 0) {
+      ctx.strokeStyle = "#2B1D15"; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(hx - 6, hy - 1); ctx.lineTo(hx - 2, hy - 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(hx + 2, hy - 1); ctx.lineTo(hx + 6, hy - 1); ctx.stroke();
+    } else {
+      ctx.fillStyle = "#2A1A10";
+      ctx.beginPath(); ctx.arc(hx - 4, hy - 1, 1.4, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(hx + 4, hy - 1, 1.4, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha *= 0.55 + Math.sin(t * 3) * 0.25 + 0.2;
+    ctx.strokeStyle = "#F0D27A"; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.ellipse(hx, hy - 19, 11, 4, 0, 0, 7); ctx.stroke();
+
     ctx.restore();
   }
 
@@ -6160,6 +6859,28 @@
   function drawCutNpc() {
     var n = G.cutNpc; if (!n) return;
     var t = n.t || 0;
+    if (n.species) {
+      // a generic stand-in companion (any of the 4 playable species) — reuse the REAL playable-
+      // character draw code via the same G.player-swap trick drawRemoteDinos() already uses
+      var dxN = n.x - (n._px != null ? n._px : n.x);
+      n._px = n.x;
+      n._vx = (n._vx || 0) * 0.78 + dxN * 0.22;
+      var movingN = Math.abs(n._vx) > 0.3;
+      n.blinkAt = (n.blinkAt == null) ? 90 : n.blinkAt - 1;
+      if (n.blinkAt <= 0) { n.blink = 7; n.blinkAt = 130 + Math.random() * 150; }
+      if (n.blink > 0) n.blink--;
+      n.run = movingN ? (n.run || 0) + 0.5 : 0;
+      var saveP = G.player;
+      G.player = {
+        x: n.x, y: n.y, w: 42, h: 48, facing: n.facing || -1, char: n.species,
+        blink: n.blink || 0, run: n.run || 0, vx: movingN ? 2 : 0, onGround: true,
+        rage: 0, koT: 0, dead: false, ghost: false, out: false, swing: 0, invuln: 0,
+        _remote: false, _tint: COMPANION_TINT[n.species] || COMPANION_TINT.rex
+      };
+      drawChar();
+      G.player = saveP;
+      return;
+    }
     if (n.type === "anky") {
       // smoothed step so the walk cycle doesn't strobe on/off as he eases to his mark
       var dx = n.x - (n._px != null ? n._px : n.x);
@@ -6882,6 +7603,8 @@
         updateOutro();
       } else if (G.state === "opening") {
         updateOpening();
+      } else if (G.state === "river") {
+        updateRiverScene();
       } else {
         fx();
       }
@@ -6901,14 +7624,15 @@
       }
     } else { G._lightT = 0; G._lightCd = 90; }
 
-    // Feuergipfel: the background volcano erupts every so often
-    if (G.levelIndex === 7 && G.level && (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro")) {
+    // Feuergipfel (occasional) / Der Ausbruch + Der Lavafluss (near-constant): the background volcano erupts
+    if ((G.levelIndex === 7 || G.levelIndex === 8 || G.levelIndex === 9) && G.level && (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river")) {
+      var eruptHot = G.levelIndex === 8 || G.levelIndex === 9;
       if (G._eruptT > 0) G._eruptT--;
       G._eruptCd = (G._eruptCd || 260) - 1;
       if (G._eruptCd <= 0) {
-        G._eruptT = 150;
-        G._eruptCd = 520 + Math.floor(Math.random() * 420);
-        if (!REDUCED) shake = Math.max(shake, 4);
+        G._eruptT = eruptHot ? 220 : 150;
+        G._eruptCd = eruptHot ? (90 + Math.floor(Math.random() * 110)) : (520 + Math.floor(Math.random() * 420));
+        if (!REDUCED) shake = Math.max(shake, eruptHot ? 6 : 4);
         if (typeof audio.thunder === "function") setTimeout(function () { audio.thunder(); }, 260);
       }
     } else { G._eruptT = 0; G._eruptCd = 240; }
@@ -6916,7 +7640,7 @@
     // co-op sync
     if (NET.on) {
       // rebuild the peer table only when something changed (coalesced), plus a slow safety poll
-      var inLvl = (G.state === "play" || G.state === "boss" || G.state === "outro" || G.state === "opening");
+      var inLvl = (G.state === "play" || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "river");
       var scanEvery = (NET.role === "screen") ? (inLvl ? 3 : 6) : 3;
       if ((NET._peersDirty && menuT % scanEvery === 0) || menuT % 45 === 0) { NET._peersDirty = false; netScanPeers(); }
       netMergeWorld();
@@ -6988,5 +7712,5 @@
   requestAnimationFrame(frame);
 })();
 </script>
-</body>
-</html>
+
+</body></html>
