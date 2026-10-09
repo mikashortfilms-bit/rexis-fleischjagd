@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Rexis Fleischjagd</title>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>[hidden]{display:none!important}</style></head><body><title>Rexis Fleischjagd</title>
 <meta name="description" content="Fullscreen-Jump-'n'-Run mit knuffigem T-Rex: drei Level, Fleisch sammeln, und am Ende jedes Levels der Spinosaurus." />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -902,7 +902,7 @@
   function camY() {
     var base = GROUND_Y - VIEW_H * 0.74;                 // the classic ground-level framing
     // set-pieces (arena / cutscenes) stay locked at ground level
-    if (!G.level || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "intro" || G.state === "river") { G._camSY = base; return base; }
+    if (!G.level || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "intro" || G.state === "river" || G.state === "introWait") { G._camSY = base; return base; }
     // otherwise follow the avatar up the climbs and down into the shafts
     var focusY;
     if (G._spectator) {
@@ -1080,12 +1080,33 @@
         { root: 196.00, scale: [0, 2, 3, 5, 7, 9, 10], bpm: 100, lead: "triangle", pad: "sine", chill: true }, // L2 G dorian — warm
         { root: 174.61, scale: [0, 2, 3, 5, 7, 8, 10], bpm: 124, lead: "sawtooth", pad: "triangle" },          // L3 F minor — driving
         { root: 246.94, scale: [0, 2, 4, 6, 7, 9, 11], bpm: 104, lead: "triangle", pad: "sine", chill: true }, // L4 B lydian — adventurous
-        { root: 164.81, scale: [0, 2, 3, 5, 7, 8, 11], bpm: 118, lead: "sawtooth", pad: "sawtooth" }           // L5 E harmonic minor — dark
+        { root: 164.81, scale: [0, 2, 3, 5, 7, 8, 11], bpm: 118, lead: "sawtooth", pad: "sawtooth" },          // L5 E harmonic minor — dark
+        // L6-L10 were missing entirely until now — `level(i)` silently ignored any i >= LM.length,
+        // so every level past L5 just kept whatever track L5 left playing. Filled in properly,
+        // and L9/L10 pushed further (lower root, faster bpm, more exotic scale) per the user's
+        // "episch, je nach Situation" ask — the SITUATIONAL half of that ask is in tickMusic()'s
+        // new chase-aware boss()-toggle below, this part is just their baseline theme.
+        { root: 146.83, scale: [0, 2, 3, 5, 7, 8, 10], bpm: 112, lead: "sawtooth", pad: "triangle" },          // L6 Knochenschlucht — D minor
+        { root: 138.59, scale: [0, 2, 3, 5, 7, 8, 10], bpm: 118, lead: "sawtooth", pad: "triangle" },          // L7 Aschenpass — C# minor
+        { root: 130.81, scale: [0, 2, 3, 5, 7, 8, 11], bpm: 122, lead: "sawtooth", pad: "sawtooth" },          // L8 Feuergipfel — C harmonic minor
+        { root: 123.47, scale: [0, 1, 4, 5, 7, 8, 10], bpm: 130, lead: "sawtooth", pad: "sawtooth" },          // L9 Der Ausbruch — B phrygian dominant, driving chase
+        { root: 110.00, scale: [0, 2, 3, 5, 7, 8, 11], bpm: 136, lead: "sawtooth", pad: "sawtooth" }           // L10 Der Lavafluss — A harmonic minor, the most epic of all
       ];
-      var MEL = [4, 2, 5, 4, 2, 1, 2, 0, 4, 5, 7, 5, 4, 2, 4, 1];   // scale-degree pattern (2 bars)
-      var PROG_CHILL = [0, 3, 4, 3];
-      var PROG_DARK = [0, 5, 3, 4];
-      var PROG_BOSS = [0, 6, 5, 4];
+      // 4 bars, not 2 — the first half is the original tune, the second half climbs to a brighter
+      // "lift" bar (schedStep bumps it an octave) before resolving back down, so the melody itself
+      // has an arc instead of just looping the same 2 bars forever
+      var MEL = [
+        4, 2, 5, 4, 2, 1, 2, 0,
+        4, 5, 7, 5, 4, 2, 4, 1,
+        7, 9, 7, 5, 7, 9, 11, 9,
+        7, 5, 4, 2, 4, 2, 1, 0
+      ];
+      // 8 chords, not 4 — doubles how long the harmony takes to repeat (paired with the 4-bar
+      // melody above, the full cycle is now 8 bars instead of 4) so the loop reads as a real
+      // song instead of an obviously-repeating 10-second snippet
+      var PROG_CHILL = [0, 3, 4, 3, 0, 5, 4, 3];
+      var PROG_DARK = [0, 5, 3, 4, 0, 5, 6, 4];
+      var PROG_BOSS = [0, 6, 4, 3, 5, 6, 4, 0];   // less of a doubled 4-chord loop than the first attempt — more distinct degrees spread across the 8 bars
       function nn(steps) { return LM[curLvl].root * Math.pow(2, steps / 12); }
       function deg(d, oct) {
         var sc = LM[curLvl].scale, n = sc.length;
@@ -1122,6 +1143,10 @@
         var prog = bossMode ? PROG_BOSS : (L.chill ? PROG_CHILL : PROG_DARK);
         var bar = Math.floor(s / 8), beat = s % 8;
         var chordDeg = prog[bar % prog.length];
+        // the 3rd bar of every 4-bar melody phrase is the written "lift" (see MEL above) —
+        // brighten it for real: an octave up and a touch louder, so the arc actually reads as
+        // a lift instead of just a different set of numbers at the same pitch
+        var liftBar = (bar % 4) === 2;
         if (beat === 0) {
           voice(deg(chordDeg, -2), t, bossMode ? 0.5 : 1.7, bossMode ? "sawtooth" : "triangle", bossMode ? 0.16 : 0.11);  // bass
           // pad chord
@@ -1130,14 +1155,31 @@
           voice(deg(chordDeg + 2, 0), t, bossMode ? 1.0 : 3.4, L.pad, pv);
           voice(deg(chordDeg + 4, 0), t, bossMode ? 1.0 : 3.4, L.pad, pv * 0.8);
         }
-        if (bossMode && beat % 2 === 0) voice(deg(chordDeg, -2), t, 0.22, "sawtooth", 0.12);   // bass pulse
+        // CONFIRMED real bug ("ein einzelner Ton, der sich dauerhaft wiederholt"): this always
+        // played deg(chordDeg,-2) — the exact same pitch, 4 times every single bar, as the
+        // loudest and lowest voice in the whole mix — so it dominated everything else and read
+        // as one repeating tone under the rest of the music. Now walks root-root-fifth-sixth
+        // instead of hammering one note.
+        if (bossMode && beat % 2 === 0) {
+          var bassOff = [0, 0, 4, 5][(beat / 2) % 4];
+          voice(deg(chordDeg + bassOff, -2), t, 0.22, "sawtooth", 0.12);
+        }
         // lead melody (eighths)
         var m = MEL[s % MEL.length];
-        var skip = bossMode ? (s % 2 === 1) : (s % 3 === 2);   // leave some space
+        // boss mode used to skip HALF the melody (s%2===1) — fewer notes right when the music
+        // should feel busiest/most urgent. Skips only a quarter now, so more of the tune
+        // actually comes through during the chase instead of thinning out.
+        var skip = bossMode ? (s % 4 === 3) : (s % 3 === 2);
         if (!skip) {
           var lv = bossMode ? 0.075 : 0.06;
-          voice(deg(chordDeg + m, bossMode ? 1 : 1), t, bossMode ? 0.16 : 0.26, L.lead, lv);
+          voice(deg(chordDeg + m, liftBar ? 2 : 1), t, bossMode ? 0.16 : 0.26, L.lead, liftBar ? lv * 1.2 : lv);
         }
+        // a sparse upper counter-note on the lift bar's off-beats — just enough extra motion to
+        // stop the loop feeling like the exact same texture bar after bar
+        if (liftBar && beat % 4 === 2) voice(deg(chordDeg + 7, 2), t, 0.3, L.pad, bossMode ? 0.05 : 0.035);
+        // an extra syncopated upper stab, boss-mode only — the kind of accent hit action/boss
+        // scores lean on, landing just ahead of the next bar instead of neatly on a beat
+        if (bossMode && beat === 7) voice(deg(chordDeg + 4, 0), t, 0.18, "sawtooth", 0.09);
         if (bossMode) {
           if (beat % 2 === 0) kick(t);
           if (beat % 2 === 1) hat(t);
@@ -1174,10 +1216,22 @@
         refresh: ramp,                        // called when the master sound toggle flips
         level: function (i) {
           if (typeof i !== "number") i = curLvl;
-          if (mode === "level" && curLvl === i && timer && !bossMode) return;   // already playing this
+          // CONFIRMED real bug ("es ist immer dasselbe"/"nur ein Ton"): the old guard here also
+          // required `!bossMode` to no-op — so the MOMENT bossMode went true (a boss fight, or
+          // L9/L10's chase-aware boss()-toggle), this stopped early-returning on every call. Since
+          // tickMusic() calls level() every single tick (every 6 frames) and THEN calls boss()
+          // right after, this function would run its full body each time, hit `bossMode = false`
+          // below, and get immediately re-flipped true by the boss() call that follows — which
+          // ALSO resets `step = 0` on every real transition. Net effect: the sequencer's step
+          // counter got stomped back to 0 roughly 10x/second, so it could never actually play past
+          // bar 0 beat 0 — every note you ever heard in boss/chase mode WAS the exact same note,
+          // not a composition problem at all. Fixed: no-op whenever we're already playing this
+          // level, full stop — bossMode is managed exclusively by boss() now, which already
+          // debounces itself correctly.
+          if (mode === "level" && curLvl === i && timer) return;   // already playing this
           ensure(); ensureGain();
           if (i >= 0 && i < LM.length) curLvl = i;
-          if (mode !== "level" || !timer) { step = 0; nextT = ac ? ac.currentTime + 0.06 : 0; }
+          step = 0; nextT = ac ? ac.currentTime + 0.06 : 0;
           mode = "level"; bossMode = false;
           if (!timer && ac) timer = setInterval(loop, 90);
           ramp();
@@ -1373,8 +1427,10 @@
       if (floaties[j].life <= 0) floaties.splice(j, 1);
     }
     if (shake > 0.2) shake *= 0.84; else shake = 0;
+    if (G._rockCrackT > 0) { G._rockCrackT--; if (G._rockCrackT <= 0) breakTrappedRock(); }
     if (G._blastT > 0) G._blastT--;   // L9/L10: the blinding flash (rock blast or river parting)
     if (G._jesusT > 0) G._jesusT--;   // L10: the descending-figure visual after the river parts
+    if (G._jesusReviveT > 0) G._jesusReviveT--;   // Jesus's own resurrection beam, any level
     if (G.level && G.level.river && G.level.river.partT > 0) G.level.river.partT--;
   }
 
@@ -1466,11 +1522,12 @@
       { who: "ally", txt: "Der Felsen ist weg?! Keine Zeit zum Nachdenken — LAUFT!" }
     ],
     // L10 "Der Lavafluss" — the finale: the chase continues from L9, then (mid-level, see
-    // RIVER_SCENES below) a lava RIVER blocks the way and gets parted. This is just the door-arrival
-    // reaction once the level's actually over.
+    // RIVER_SCENES below) a lava RIVER blocks the way and gets parted. At the door, Jesus himself
+    // (G.cutNpc2, spawned in startTrapped()) shows up one more time to see the group off in person.
     [
       { who: "hero", txt: "Geschafft ... wir haben's wirklich geschafft." },
       { who: "ally", txt: "Wow. Jesus hat uns gerettet. Zweimal." },
+      { who: "jesus", txt: "Ich habe euch gerettet. Geht in Frieden — und haltet zusammen." },
       { who: "hero", txt: "Dem schulden wir wirklich was." },
       { who: "ally", txt: "Komm — wir haben uns eine Pause verdient." }
     ]
@@ -2102,7 +2159,7 @@
     G.spino = null;
     G.hazards = [];
     G.leftWall = null;
-    G.cutNpc = null; G.opening = null; G.outro = null; G.riverScene = null;
+    G.cutNpc = null; G.cutNpc2 = null; G.opening = null; G.outro = null; G.riverScene = null;
     G._jesusT = 0;
     // Anky walks the parcours with you on L7 + L8 (story: he shows the way). Not a playable figure.
     G.ally = (!G._spectator && (i === 6 || i === 7) && !(G.player && G.player.char === "anky"))
@@ -2114,7 +2171,9 @@
     G.time = 0;
     G.levelTotal = G.level.meats.length;
     G.levelGot = 0; G._arenaWait = false;
-    G._healHalf = false; G._healFull = false; G._healBank = 0;
+    G._healHalf = false; G._healFull = false; G._healBank = 0; G._healJesusT = 0;
+    G._jesusRevived = false; G._jesusReviveT = 0;   // Jesus's once-per-level resurrection
+    G._rockCrackT = 0; G._rockCrackT0 = 40;          // L9: anticipation crack before the dead-end rock blows
     G._myMeat = []; G._myBone = []; G._myFoe = [];
     NET._mwInit = false;
     if (typeof hideDialogue === "function") hideDialogue();
@@ -2185,19 +2244,68 @@
   function tickMusic() {
     if (!audio.music) return;
     var st = G.state;
-    if (G.level && (st === "play" || st === "intro" || st === "opening" || st === "river")) audio.music.level(G.levelIndex);
+    if (G.level && (st === "play" || st === "intro" || st === "opening" || st === "river" || st === "introWait")) {
+      audio.music.level(G.levelIndex);
+      // L9/L10 (any chase-flagged level): the lava bearing down gets the same heightened
+      // boss-style treatment a real fight already has (faster, louder, the dramatic chord
+      // progression) — eases off while paused at a co-op wait-gate (a held-breath dip, not full
+      // calm) or once the river's actually been crossed, so the score tracks the danger you're
+      // actually in rather than just looping the same thing regardless of situation.
+      if (LEVELS[G.levelIndex] && LEVELS[G.levelIndex].chase) {
+        var hot = (G._chase && !G._riverWait && !G._arenaWait) ||
+          (st === "river" && G.level.river && !G.level.river.crossed);
+        audio.music.boss(!!hot);
+      }
+    }
     else if (st === "boss") { audio.music.level(G.levelIndex); audio.music.boss(true); }
-    else if (st === "outro") audio.music.boss(false);
+    else if (st === "outro") {
+      // L9/L10's dead-end dialogue stays tense right up to the rock blast / river miracle —
+      // only the "roam" phase after it (safe now, feast time) eases off like every other
+      // level's post-boss victory outro already does.
+      var stillCornered = LEVELS[G.levelIndex] && LEVELS[G.levelIndex].chase &&
+        !LEVELS[G.levelIndex].boss && G.outro && G.outro.phase === "talk";
+      audio.music.boss(!!stillCornered);
+    }
     else audio.music.stop();
   }
 
   function skipIntro() {
     if (G.state !== "intro") return;
     G.introT = 0;
-    elIntro.hidden = true;
-    // levels with an opening cutscene play it before control is handed over
-    if (OPENINGS[G.levelIndex]) { startOpening(G.levelIndex); return; }
-    G.state = "play";
+    if (!NET.on) {
+      elIntro.hidden = true;
+      // levels with an opening cutscene play it before control is handed over
+      if (OPENINGS[G.levelIndex]) { startOpening(G.levelIndex); return; }
+      G.state = "play";
+      return;
+    }
+    // co-op: hold here — repurposing the SAME intro card as a "waiting" message — until every
+    // partner has ALSO finished their own intro card. Without this, one client could dive straight
+    // into (or tap-skip through) the opening dialogue seconds before another has even arrived,
+    // leaving the two screens completely desynced for the rest of the scene. Same idea as the
+    // existing arena-wait gate before a boss fight, just moved to level-start.
+    G.state = "introWait";
+    document.getElementById("introKicker").textContent = "Warte auf Partner ...";
+    document.getElementById("introTitle").textContent = "";
+    document.getElementById("introText").textContent = "";
+  }
+  function updateIntroWait() {
+    if (!NET.on) {   // shouldn't happen, but never get stuck if it does
+      elIntro.hidden = true;
+      if (OPENINGS[G.levelIndex]) startOpening(G.levelIndex); else G.state = "play";
+      return;
+    }
+    var allHere = true;
+    netLivePeers().forEach(function (pe) {
+      if (pe.role === "screen") return;
+      if (pe.lvl !== G.levelIndex) { allHere = false; return; }
+      if (pe.ph === "map" || pe.ph === "lobby" || pe.ph === "intro") allHere = false;
+    });
+    if (allHere) {
+      elIntro.hidden = true;
+      if (OPENINGS[G.levelIndex]) startOpening(G.levelIndex); else G.state = "play";
+    }
+    fx();
   }
 
   function nextLevel() {
@@ -2604,7 +2712,7 @@
     }
     var partnerInGame = null;
     netLivePeers().forEach(function (pe) {
-      if (pe.role !== "screen" && (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river")) partnerInGame = pe;
+      if (pe.role !== "screen" && (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river" || pe.ph === "introWait")) partnerInGame = pe;
     });
     if (!NET.on && partnerInGame) {
       elJoinBtn.hidden = false; elCoopBtn.hidden = true;
@@ -2777,7 +2885,7 @@
     if (!NET.on) return;
     // screen mode: everyone left mid-level -> back to the waiting screen
     if (G._spectator) {
-      var inLvlS = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river");
+      var inLvlS = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river" || G.state === "introWait");
       if (inLvlS && partyAvatars().length === 0) {
         NET._noCtl = (NET._noCtl || 0) + 1;
         if (NET._noCtl > 200) {
@@ -2788,7 +2896,7 @@
       } else NET._noCtl = 0;
       return;
     }
-    var inLevel = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river");
+    var inLevel = (G.state === "play" || G.state === "boss" || G.state === "opening" || G.state === "outro" || G.state === "river" || G.state === "introWait");
     netAllPeers().forEach(function (pe) {
       var g = peerGone(pe);
       if (g && !pe.gone) { pe.gone = true; if (inLevel && pe.wasNamed) toast((pe.nm || "Dein Partner") + " hat das Spiel verlassen."); }
@@ -2842,6 +2950,7 @@
       ot: (G.state === "outro" && G.outro) ? (G.outro.total || 0) : null,
       oln: (G.state === "outro" && G.outro) ? (G.outro.line || 0) : null,
       op: (G.state === "outro" && G.outro) ? G.outro.phase : null,
+      rln: (G.state === "river" && G.riverScene) ? (G.riverScene.line || 0) : null,
       mk: G._myMeat || [], bk: G._myBone || [], fk: G._myFoe || []
     };
     try { NET.ns.presence(patch); } catch (e) { }
@@ -3124,7 +3233,7 @@
     netAllPeers().forEach(function (pe) {
       if (typeof pe.rl === "number" && pe.rl > hi && pe.lvl === G.levelIndex) hi = pe.rl;
     });
-    if (hi > (NET._rlSeen || 0) && (G.state === "play" || G.state === "boss" || G.state === "outro")) {
+    if (hi > (NET._rlSeen || 0) && (G.state === "play" || G.state === "boss" || G.state === "outro" || G.state === "river" || G.state === "introWait" || G.state === "opening")) {
       NET._rlSeen = hi;
       restartLevelFromDeath(true);
     } else if (hi > (NET._rlSeen || 0)) {
@@ -3185,7 +3294,7 @@
       var into = null;
       netLivePeers().forEach(function (pe) {
         if (pe.role === "screen") return;
-        if (typeof pe.lvl === "number" && (pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river")) into = pe.lvl;
+        if (typeof pe.lvl === "number" && (pe.ph === "play" || pe.ph === "boss" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "outro" || pe.ph === "river" || pe.ph === "introWait")) into = pe.lvl;
       });
       if (into != null && into >= 0 && into < LEVEL_COUNT && (G.state === "screenlobby" || into !== G.levelIndex)) {
         NET._adv = 60; beginLevel(into);
@@ -3196,7 +3305,7 @@
     var ahead = -1;
     netLivePeers().forEach(function (pe) { if (typeof pe.lvl === "number" && pe.lvl > ahead) ahead = pe.lvl; });
     if (ahead > G.levelIndex && ahead <= LEVEL_COUNT - 1 &&
-      (G.state === "play" || G.state === "boss" || G.state === "clear" || G.state === "outro" || G.state === "intro" || G.state === "opening" || G.state === "river")) {
+      (G.state === "play" || G.state === "boss" || G.state === "clear" || G.state === "outro" || G.state === "intro" || G.state === "opening" || G.state === "river" || G.state === "introWait")) {
       NET._adv = 60;
       beginLevel(ahead);
     }
@@ -3207,7 +3316,7 @@
   function coopPartnerPresent() {
     var ok = false;
     netLivePeers().forEach(function (pe) {
-      if (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "river") ok = true;
+      if (pe.ph === "lobby" || pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "boss" || pe.ph === "river" || pe.ph === "introWait") ok = true;
     });
     return ok;
   }
@@ -3366,7 +3475,7 @@
     if (G.state !== "map" || G.mode !== "co") return;
     var sel = null;
     netLivePeers().forEach(function (pe) {
-      if (typeof pe.sel === "number" && (pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "river")) sel = pe.sel;
+      if (typeof pe.sel === "number" && (pe.ph === "map" || pe.ph === "intro" || pe.ph === "opening" || pe.ph === "play" || pe.ph === "river" || pe.ph === "introWait")) sel = pe.sel;
     });
     if (sel != null && sel >= 0 && sel <= maxPlayable() - 1) { NET._mapSel = sel; startLevel(sel); }
   }
@@ -3845,6 +3954,10 @@
     drawHearts(); syncHud();
 
     if (p.lives <= 0) {
+      // Jesus's passive: once per level, instead of going out for good, a beam of light saves
+      // him right where he fell — one last heart, one last life. Purely local (same as his
+      // healing aura) so it works identically in solo and co-op with zero network sync fields.
+      if (jesusPlayer() && !G._jesusRevived) { jesusRevive(p); return; }
       p.out = true; p.dead = true; p.ghost = false; p.koT = 0;
       floatText(p.x + p.w / 2, p.y - 16, "letztes Leben weg!", "#FFC9BC");
       if (!NET.on) { showOver(); }
@@ -3868,6 +3981,27 @@
     }
   }
 
+  // Jesus's special ability, part 2 (part 1 = tickJesusHeal, healing nearby teammates): once per
+  // level, the moment he'd otherwise be fully out of lives, he's resurrected on the spot instead —
+  // a single heart, a single life, right where he fell. p.dead stays false, so the normal post-hurt
+  // "reposition to the last safe ledge" logic in updatePlay/updateBoss (which only fires when
+  // !p.dead) still runs right after this returns — covers a pit-fall revival automatically, no
+  // separate repositioning needed here.
+  function jesusRevive(p) {
+    G._jesusRevived = true;
+    p.lives = 1; p.hearts = 1; p.invuln = 150; p.dead = false; p.out = false; p.ghost = false; p.koT = 0;
+    p.vx = 0; p.vy = -2;
+    G._jesusReviveT = 130;
+    G._jesusReviveX = p.x + p.w / 2; G._jesusReviveY = p.y + p.h;
+    G._slowmo = REDUCED ? 0 : 40;
+    shake = REDUCED ? 0 : 10;
+    burst(p.x + p.w / 2, p.y + p.h / 2, "#FFFBE0", 22, 2.4);
+    burst(p.x + p.w / 2, p.y + p.h / 2, "#FFD873", 14, 2.0);
+    floatText(p.x + p.w / 2, p.y - 20, "AUFERSTANDEN!", "#FFE7A6");
+    drawHearts(); syncHud();
+    if (audio.power) audio.power();
+    if (audio.thunder) audio.thunder();
+  }
   // L9 "Der Ausbruch": the lava always costs a FULL life + a checkpoint respawn, never just a heart
   function lavaCatch(p) {
     if (p.ghost || p.out || p.dead || p.invuln > 0) return;
@@ -4095,11 +4229,19 @@
     // ---- party "screen": no avatar, just run the world + resolve every controller's hits ----
     if (G._spectator) {
       updateFoes(p, p.y + p.h);
-      var anyBoss = false;
+      var anyBoss = false, anyRiver = false;
       netLivePeers().forEach(function (pe) {
-        if (pe.role !== "screen" && pe.lvl === G.levelIndex && (pe.ph === "boss" || pe.ph === "outro")) anyBoss = true;
+        if (pe.role === "screen" || pe.lvl !== G.levelIndex) return;
+        if (pe.ph === "boss" || pe.ph === "outro") anyBoss = true;
+        if (pe.ph === "river") anyRiver = true;
       });
-      if (G.state === "play" && anyBoss) startBoss();
+      if (G.state === "play") {
+        if (anyRiver) startRiverScene();
+        // boss-less levels (L9/L10) never go through "boss" phase at all — only "outro" fires there,
+        // and starting an actual (nonexistent) boss fight for them would fall back to a bogus
+        // Spinosaurus (startBoss()'s kind lookup defaults to "spino" when LEVELS[i].boss is null)
+        else if (anyBoss) { if (LEVELS[G.levelIndex].boss) startBoss(); else startTrapped(); }
+      }
       fx(); syncHud();
       return;
     }
@@ -4107,15 +4249,23 @@
     // ghost / out: drift with the group, wait for a friend to reach the next flag
     if (p.ghost || p.out) {
       updateGhost(p); checkTeamDown();
-      // a friend reached the arena / started the boss -> come in for the fight together
-      if (NET.on && G.state === "play" && netLivePeers().some(function (pe) {
-        return pe.role !== "screen" && pe.lvl === G.levelIndex && (pe.ph === "boss" || pe.ph === "outro");
-      })) startBoss();
+      // a friend reached the arena / river / started the boss -> come in together
+      if (NET.on && G.state === "play") {
+        var frRiver = false, frBoss = false;
+        netLivePeers().forEach(function (pe) {
+          if (pe.role === "screen" || pe.lvl !== G.levelIndex) return;
+          if (pe.ph === "river") frRiver = true;
+          if (pe.ph === "boss" || pe.ph === "outro") frBoss = true;
+        });
+        if (frRiver) startRiverScene();
+        else if (frBoss) { if (LEVELS[G.levelIndex].boss) startBoss(); else startTrapped(); }
+      }
       fx(); syncHud(); return;
     }
 
     if (p.koT > 0) { p.koT--; if (p.koT <= 0) netRespawn(p); }
     tickHealBank();
+    tickJesusHeal(p);
     checkpointTouch(p);
     checkTeamDown();
     updateGates();
@@ -4186,11 +4336,41 @@
       }
     }
 
-    // L10: reaching the lava river takes over with the mid-level Jesus-parting scene — purely
-    // local per client (same philosophy as the co-op gates), so each player gets their own moment
-    // the instant THEY arrive, independent of where their partner currently is.
+    // L10: the river is real molten lava before it parts, not just an empty gap you fall through
+    // for a while unharmed — stepping into its span at ground level costs a full life immediately,
+    // same as L9's chase lava (lavaCatch), instead of relying on the generic bottomless-pit check
+    // (which only fires after falling a further 260px, reading as "nothing happened, I can just
+    // run into it"). Checked here (every "play" frame) rather than only at the trigger threshold,
+    // so it also catches a running jump that overshoots straight into the gap.
+    if (G.level.river && !G.level.river.crossed && p.x + p.w > G.level.river.x && p.x < G.level.river.x + G.level.river.w && p.y + p.h > GROUND_Y - 6) {
+      lavaCatch(p);
+    }
+
+    // L10: reaching the lava river takes over with the mid-level Jesus-parting scene. In co-op this
+    // WAITS for every live partner too — same "allInside" gate as the arena below — so the dialogue
+    // can never start for one player seconds before another has even arrived (that was a real bug:
+    // one screen could be deep into the scene, or already past it, while the other hadn't even
+    // reached the river yet, let alone pressed anything).
+    G._riverWait = false;
     if (G.state === "play" && G.level.river && !G.level.river.triggered && p.x > G.level.river.x - 60) {
-      startRiverScene();
+      if (!NET.on) {
+        startRiverScene();
+      } else {
+        var rMouth = G.level.river.x - 60;
+        var rPartnerIn = false, rAllIn = true;
+        netLivePeers().forEach(function (pe) {
+          if (pe.role === "screen" || pe.lvl !== G.levelIndex) return;
+          if (pe.ph === "river") rPartnerIn = true;
+          if (pe.d && (pe.d.gh || pe.d.out)) return;            // ghosts revive with the scene — don't hold the gate
+          if (!pe.d || pe.d.x < rMouth || pe.d.ko) rAllIn = false;
+        });
+        if (rPartnerIn || rAllIn) {
+          startRiverScene();
+        } else {
+          if (p.x > G.level.river.x - 30) { p.x = G.level.river.x - 30; p.vx = 0; }   // hold just short of the bank
+          G._riverWait = true;
+        }
+      }
     }
 
     // enter the arena -> boss fight, or (L9, no boss) the trapped dead-end dialogue
@@ -4235,7 +4415,7 @@
         }
       }
     }
-    if (G._chase && G.state === "play" && !G._arenaWait && !onGatePlate) {
+    if (G._chase && G.state === "play" && !G._arenaWait && !onGatePlate && !G._riverWait) {
       G._chase.spd = Math.min(G._chase.spdMax, G._chase.spd + 0.0006);
       G._chase.x += G._chase.spd;
       // only actually lava-colored ground can catch you — a dino up on a tall platform is briefly
@@ -4260,8 +4440,8 @@
       if (Math.abs((p.x + p.w / 2) - mt.x) < 26 && Math.abs((p.y + p.h / 2) - mt.y) < 30) {
         mt.taken = true; mt._fx = 1;
         if (NET.on) { G._myMeat.push(m); } else { G.totalMeat++; G.levelGot++; }
-        var ec = herbPlayer() ? "#7DC85C" : "#E1553C";
-        burst(mt.x, mt.y, ec, 9, 1); burst(mt.x, mt.y, herbPlayer() ? "#CDEBB0" : "#F2C6A0", 4, 1);
+        var ec = herbPlayer() ? "#7DC85C" : (jesusPlayer() ? "#E7C468" : "#E1553C");
+        burst(mt.x, mt.y, ec, 9, 1); burst(mt.x, mt.y, herbPlayer() ? "#CDEBB0" : (jesusPlayer() ? "#F3EADA" : "#F2C6A0"), 4, 1);
         floatText(mt.x, mt.y - 6, "+1", "#FFE9C6");
         audio.chomp(); syncHud();
         if (!NET.on) checkLifeHeal();
@@ -4406,6 +4586,7 @@
     var p = G.player, s = G.spino;
     if (!s) return;
     tickHealBank();
+    tickJesusHeal(p);
     var ghost = NET.on && p.dead;
     var prevBottom = p.y + p.h;
 
@@ -4738,17 +4919,24 @@
   // this never grants or marks it unlocked — because a dialogue that falls through to the hero's
   // own voice for BOTH sides of the back-and-forth ("ally" lines with no one else around) reads as
   // a broken monologue, not an intentional solo beat.
-  function pickTrappedCompanion() {
+  // "jesus" is deliberately NOT in this list: he hasn't been introduced yet at any point this
+  // function is used for (L9's opening/trapped-wall chat, L10's opening, and the PRE-miracle half of
+  // L10's river scene) — he only exists in the story from the moment he parts the river onward, and
+  // appears there as his own dedicated cutNpc2 (see startTrapped()), not as a generic stand-in. If
+  // he were unlocked already (a replay after finishing L10 once) and picked here anyway, he'd be
+  // casually chatting alongside you in L9 before he's ever "met" the group — a real continuity bug
+  // a prior pass introduced by putting him first in this order array.
+  function pickTrappedCompanion(exclude) {
     if (NET.on) return null;
     var mine = (G.player && G.player.char) || "rex";
-    var order = ["jesus", "anky", "langhals", "spino", "rex"];
+    var order = ["anky", "langhals", "spino", "rex"];
     var unlocked = availChars();
     for (var i = 0; i < order.length; i++) {
       var c = order[i];
-      if (c !== mine && unlocked[c]) return { species: c, x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
+      if (c !== mine && c !== exclude && unlocked[c]) return { species: c, x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
     }
     for (var j = 0; j < order.length; j++) {
-      if (order[j] !== mine) return { species: order[j], x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
+      if (order[j] !== mine && order[j] !== exclude) return { species: order[j], x: 0, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 };
     }
     return null;   // mine isn't even a valid species — shouldn't happen, but fall through to hero rather than crash
   }
@@ -4762,10 +4950,26 @@
     G.hazards = [];
     G.leftWall = null;
     G._chase = null;                         // the forced lava-scroll stops the moment you reach the arena
+    // the arena counts as a checkpoint here too — any waiting ghost/K.O.'d player comes back fully
+    // revived so everyone arrives at the scene together. startBoss() already does this; this was
+    // missing entirely here, which left a player a partner pulled in via the ghost-revival path
+    // stuck half-ghosted (state says "outro" but ghost/hearts never got cleared).
+    var gp = G.player;
+    if (gp && !G._spectator && !gp.out && (gp.ghost || gp.dead || gp.koT > 0)) {
+      gp.ghost = false; gp.dead = false; gp.hearts = 3; gp.invuln = 130;
+      drawHearts(); syncHud();
+    }
     if (!G._spectator) { G.player.koT = 0; G.player.vx = 0; G.player.vy = 0; G.player.x = G.level.arenaX + 60; }
     var gx = G.level.feastX, dx = G.level.doorX;
-    G.cutNpc = pickTrappedCompanion();
+    var isFinale = G.levelIndex === 9;
+    G.cutNpc = pickTrappedCompanion(isFinale ? "jesus" : null);   // L10: Jesus himself shows up below as cutNpc2, don't also pick him as the regular stand-in
     if (G.cutNpc) { G.cutNpc.x = G.level.arenaX + 95; G.cutNpc.y = GROUND_Y - 48; G.cutNpc.facing = 1; }
+    // L10's finale: Jesus himself appears one more time to see the group off — a visible 3rd voice
+    // in the door-arrival dialogue, not just mentioned by the others. Skipped if the LOCAL player
+    // is already playing as Jesus — a second one standing next to "yourself" would look like a
+    // duplicate, not a cameo.
+    var iAmJesus = !G._spectator && G.player && G.player.char === "jesus";
+    G.cutNpc2 = (isFinale && !iAmJesus) ? { species: "jesus", x: G.level.arenaX + 150, y: GROUND_Y - 48, w: 42, h: 48, t: 0, facing: -1 } : null;
     G.outro = {
       t: 0, phase: "talk", total: 400, joy: 0, cine: 1, speaking: 0, leaveT: 0,
       script: STORY[G.levelIndex] || STORY[0], line: 0, lineT: 0,
@@ -4776,16 +4980,45 @@
     };
     document.getElementById("bossbar").hidden = true;
   }
-  // the blinding flash that blows the dead-end rock apart
+  // the dead-end rock going epic (2026-10-09): two beats now, not one instant flash — first a
+  // rising crack of light across the rock while it's STILL standing (anticipation, ticked down in
+  // fx(), same device as the L10 river's pre-split crack), then breakTrappedRock() fires for real
+  // once the crack peaks.
   function triggerTrappedBlast() {
+    G._rockCrackT = G._rockCrackT0 || 40;
+    shake = REDUCED ? 0 : 5;
+    if (audio.thunder) audio.thunder();
+  }
+  // the actual explosion half of triggerTrappedBlast() — rock gone, chunks fly, the big flash/
+  // shake/slowmo. Fired from fx() the instant the anticipation crack counts down to 0.
+  function breakTrappedRock() {
     if (G.level && G.level.blockRock) G.level.blockRock.solid = false;
-    G._blastT = 50;
-    shake = REDUCED ? 0 : 16;
+    G._blastT = 90;             // longer hold+fade than the old one-beat flash (still a plain
+    G._slowmo = REDUCED ? 0 : 46;   // 50/36 divisor in drawBlastFlash/drawBlastBeam — just holds longer)
+    shake = REDUCED ? 0 : 18;
     var bx = G.level ? G.level.arenaX : 0;
-    burst(bx, GROUND_Y - 80, "#FFFBE0", 36, 3.2);
-    burst(bx, GROUND_Y - 80, "#FFD873", 24, 2.6);
+    for (var b = 0; b < 3; b++) {
+      burst(bx, GROUND_Y - 70 - b * 12, "#FFFBE0", 26 - b * 4, 3.2 - b * 0.4);
+      burst(bx, GROUND_Y - 70 - b * 12, "#FFD873", 16 - b * 2, 2.6 - b * 0.4);
+    }
+    rockDebris(bx, GROUND_Y - 80);
     if (audio.power) audio.power();
     if (audio.bosshit) audio.bosshit();
+  }
+  // a handful of chunky dark rock pieces flying outward with real gravity — distinct from the
+  // bright embers, reads as the rock itself breaking apart rather than just sparkling light
+  function rockDebris(x, y) {
+    var n = REDUCED ? 4 : 11;
+    for (var i = 0; i < n; i++) {
+      var ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.95;
+      var spd = 2.2 + Math.random() * 3.4;
+      particles.push({
+        x: x + (Math.random() - 0.5) * 24, y: y,
+        vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
+        life: 42 + Math.random() * 26, col: (Math.random() < 0.5 ? "#241210" : "#4A2420"),
+        r: 3 + Math.random() * 4, g: 0.28
+      });
+    }
   }
 
   // end of dialogue: normally the boss trudges off ("leave"); on L6 the beaten Anky is now a
@@ -4810,7 +5043,19 @@
   function startRiverScene() {
     G.state = "river";
     if (G.level && G.level.river) G.level.river.triggered = true;
-    if (!G._spectator) { G.player.vx = 0; G.player.koT = 0; }
+    // ghost/K.O.'d players revive here too — mirrors startBoss()/startTrapped(), so a partner
+    // pulled into this scene isn't left stuck half-ghosted once the state flips to "river"
+    var gp = G.player;
+    if (gp && !G._spectator && !gp.out && (gp.ghost || gp.dead || gp.koT > 0)) {
+      gp.ghost = false; gp.dead = false; gp.hearts = 3; gp.invuln = 130;
+      drawHearts(); syncHud();
+    }
+    // hard-set the stopping spot, same as startBoss()/startTrapped() — the trigger fires 60px
+    // short of the actual gap, but was never actually SNAPPING the player there (unlike its two
+    // sibling scene-starters), so a jump or a bit of extra momentum right at the trigger instant
+    // could leave them standing awkwardly close to (or, worst case, already inside) the gap once
+    // the cutscene's own gravity/collision takes over for the rest of the scene.
+    if (!G._spectator) { G.player.x = G.level.river.x - 72; G.player.y = GROUND_Y - 48; G.player.vx = 0; G.player.vy = 0; G.player.koT = 0; }
     G.cutNpc = pickTrappedCompanion();
     if (G.cutNpc) { G.cutNpc.x = (G.player ? G.player.x : 0) - 70; G.cutNpc.y = GROUND_Y - 48; G.cutNpc.facing = 1; }
     G.riverScene = { script: RIVER_SCENES[G.levelIndex] || [], line: 0, lineT: 0, cine: 0, partLine: 3, parted: false };
@@ -4819,6 +5064,19 @@
   function updateRiverScene() {
     var o = G.riverScene, p = G.player, n = G.cutNpc;
     if (!o) { G.state = "play"; return; }
+    // co-op: run this off the SAME shared-clock idea the boss outro already uses — adopt whichever
+    // partner is furthest along (by line) so both screens stay in lockstep rather than each client
+    // independently progressing (and independently triggering the blast) on its own timer. Without
+    // this, one player could already be past the miracle / tap-skipping ahead while the other was
+    // still on line 0 — exactly the desync the user reported.
+    if (NET.on) {
+      var hiRL = o.line || 0;
+      netLivePeers().forEach(function (pe) {
+        if (pe.lvl !== G.levelIndex) return;
+        if (typeof pe.rln === "number" && pe.rln > hiRL) hiRL = pe.rln;
+      });
+      if (hiRL > (o.line || 0)) { o.line = hiRL; o.lineT = 0; maybeRiverPart(o); }
+    }
     o.cine += (1 - o.cine) * 0.1;
     if (n) n.t = (n.t || 0) + 1;
     if (!G._spectator && p) {
@@ -4853,6 +5111,18 @@
     return true;
   }
   function endRiverScene() {
+    // CONFIRMED real bug: partRiver() makes the bridge steps solid ALL AT ONCE the instant it
+    // fires, while the lava graphic itself takes ~2.8s to visually recede (drawLavaRiver's
+    // partT countdown). A fast tap-skip through the remaining dialogue line(s) could reach here
+    // (handing control back, G.state="play") well before that recede finished — so the player
+    // could immediately walk onto the (already-solid) steps while they were still rendered as
+    // molten lava, reading exactly like "running around inside the lava unharmed". Fixed by never
+    // actually ending the scene while the parting is still visually in progress — updateRiverScene()
+    // keeps re-calling this every frame once stuck on the last line (cur stays defined, the
+    // auto-advance timeout condition stays true), so it simply finishes the moment partT catches
+    // up, no extra polling plumbing needed.
+    var r = G.level && G.level.river;
+    if (r && r.crossed && r.partT > 0) return;
     hideDialogue();
     G.cutNpc = null; G.riverScene = null;
     if (G.player) G.player.facing = 1;
@@ -4864,13 +5134,17 @@
   // light" language, so the two moments read as the same kind of event.
   function partRiver() {
     var r = G.level && G.level.river; if (!r || r.crossed) return;
-    r.crossed = true; r.partT = 60;
+    r.crossed = true; r.partDur = 170; r.partT = r.partDur;   // a slow, deliberate parting, not a quick wipe
     for (var i = 0; i < r.steps.length; i++) G.level.plats.push(r.steps[i]);
-    G._blastT = 50; G._jesusT = 70;
-    shake = REDUCED ? 0 : 10;
-    burst(r.x + r.w / 2, GROUND_Y - 60, "#FFFBE0", 30, 2.8);
-    burst(r.x + r.w / 2, GROUND_Y - 60, "#FFD873", 20, 2.4);
+    G._blastT = 60; G._jesusT = 210;
+    G._slowmo = REDUCED ? 0 : 50;      // a brief dramatic beat, same device as the boss-kill slowmo
+    shake = REDUCED ? 0 : 14;
+    for (var b = 0; b < 3; b++) {
+      burst(r.x + r.w / 2, GROUND_Y - 60 - b * 14, "#FFFBE0", 24, 2.6 - b * 0.4);
+      burst(r.x + r.w / 2, GROUND_Y - 60 - b * 14, "#FFD873", 16, 2.2 - b * 0.4);
+    }
     if (audio.power) audio.power();
+    if (audio.thunder) audio.thunder();
   }
 
   // advance the story dialogue on a tap / jump
@@ -5148,10 +5422,11 @@
         var gain = NET.on ? 15 : 25;
         G.totalMeat += gain; if (NET.on) G._teamBase = (G._teamBase || 0) + gain;
         p.vx = 0; p.facing = -1;
-        var hb = herbPlayer();
-        for (var k = 0; k < 44; k++) burst(g.x, g.y - 50, hb ? (k % 2 ? "#7DC85C" : "#3E7E36") : (k % 3 === 0 ? "#F0A63E" : k % 3 === 1 ? "#E1553C" : "#FBE7C0"), 1, 3.2);
-        floatText(g.x, g.y - 122, hb ? "MAMPF!" : "MJAM!", "#FFE9C6");
-        floatText(g.x - 4, g.y - 152, "+" + gain, hb ? "#7DC85C" : "#F0A63E");
+        var hb = herbPlayer(), jb = jesusPlayer();
+        var feastCol = hb ? (function (k) { return k % 2 ? "#7DC85C" : "#3E7E36"; }) : jb ? (function (k) { return k % 2 ? "#E7C468" : "#F3EADA"; }) : (function (k) { return k % 3 === 0 ? "#F0A63E" : k % 3 === 1 ? "#E1553C" : "#FBE7C0"; });
+        for (var k = 0; k < 44; k++) burst(g.x, g.y - 50, feastCol(k), 1, 3.2);
+        floatText(g.x, g.y - 122, hb ? "MAMPF!" : jb ? "AMEN!" : "MJAM!", "#FFE9C6");
+        floatText(g.x - 4, g.y - 152, "+" + gain, hb ? "#7DC85C" : jb ? "#E7C468" : "#F0A63E");
         audio.chomp(); audio.fanfare(); syncHud();
       }
       if (o.celebrated) {
@@ -5202,10 +5477,10 @@
       ctx.globalAlpha = 1;
     }
     if (!g.ate) {
-      var herb = herbPlayer();
+      var herb = herbPlayer(), jesusG = jesusPlayer();
       ctx.globalAlpha = 0.3 + Math.sin(g.t * 2) * 0.1;
       var gg = ctx.createRadialGradient(0, 0, 6, 0, 0, 58);
-      gg.addColorStop(0, herb ? "#A7E27A" : "#F6C86B"); gg.addColorStop(1, "rgba(246,200,107,0)");
+      gg.addColorStop(0, herb ? "#A7E27A" : (jesusG ? "#E7C468" : "#F6C86B")); gg.addColorStop(1, "rgba(246,200,107,0)");
       ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 4, 58, 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
       if (herb) {
@@ -5225,6 +5500,16 @@
           ctx.restore();
         }
         ctx.fillStyle = "#8FD46A"; ctx.beginPath(); ctx.arc(0, -2, 12, 0, 7); ctx.fill();
+      } else if (jesusG) {
+        // a giant loaf of bread
+        ctx.fillStyle = "#C98A4E";
+        ctx.beginPath(); ctx.ellipse(0, 2, 34, 22, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#E7B171";
+        ctx.beginPath(); ctx.ellipse(0, -6, 30, 17, 0, Math.PI, 0); ctx.fill();
+        ctx.strokeStyle = "#9A6132"; ctx.lineWidth = 2.4; ctx.lineCap = "round";
+        for (var sl = -2; sl <= 2; sl++) {
+          ctx.beginPath(); ctx.moveTo(sl * 11 - 6, -16); ctx.lineTo(sl * 11 + 6, 0); ctx.stroke();
+        }
       } else {
         ctx.strokeStyle = "#F2E4C6"; ctx.lineWidth = 13; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(10, 14); ctx.lineTo(30, 34); ctx.stroke();
@@ -5354,6 +5639,8 @@
   function fmt(s) { var m = Math.floor(s / 60), r = Math.floor(s % 60); return m + ":" + (r < 10 ? "0" : "") + r; }
   // does the local player eat plants instead of meat?
   function herbPlayer() { return !!(G.player && (G.player.char === "langhals" || G.player.char === "anky")); }
+  // Jesus has his own diet — small Bibles instead of meat/ferns, a giant loaf at the feast
+  function jesusPlayer() { return !!(G.player && G.player.char === "jesus"); }
   var _icMeat = document.getElementById("icMeat"), _icLeaf = document.getElementById("icLeaf");
   function syncHud() {
     meatVal.textContent = G.levelGot + "/" + G.levelTotal;
@@ -5398,6 +5685,28 @@
       if (audio.power) audio.power();
     }
   }
+  // Jesus's special ability (co-op): standing near a teammate playing as Jesus slowly heals you.
+  // Jesus has no simulation authority over other clients' players (nobody does — no host), so this
+  // is computed the same way everything else co-op-related is: each client watches for a live
+  // "jesus" peer nearby and heals ITS OWN local player, never reaching into anyone else's state.
+  function tickJesusHeal(p) {
+    if (!NET.on || !p || p.hearts >= 3 || p.dead || p.ghost || p.out || p.koT > 0) { G._healJesusT = 0; return; }
+    var near = netLivePeers().some(function (pe) {
+      return pe.role !== "screen" && pe.lvl === G.levelIndex && pe.ch === "jesus" && pe.d &&
+        !pe.d.dead && !pe.d.gh && !pe.d.out &&
+        Math.abs(pe.d.x - p.x) < 130 && Math.abs(pe.d.y - p.y) < 90;
+    });
+    if (!near) { G._healJesusT = Math.max(0, (G._healJesusT || 0) - 2); return; }
+    G._healJesusT = (G._healJesusT || 0) + 1;
+    if (G._healJesusT > 180) {   // ~3s standing near Jesus -> +1 heart
+      G._healJesusT = 0;
+      p.hearts = Math.min(3, p.hearts + 1);
+      drawHearts(); syncHud();
+      burst(p.x + p.w / 2, p.y - 10, "#FFD9E0", 14, 1.5);
+      floatText(p.x + p.w / 2, p.y - 28, "+1 Herz ✝", "#FFC9D8");
+      if (audio.power) audio.power();
+    }
+  }
   function drawHearts() {
     heartsEl.innerHTML = "";
     var hp = G.player ? G.player.hearts : 3;
@@ -5424,6 +5733,7 @@
     var scx = ent ? (ent.x + ent.w / 2) : (lft + rgt) / 2;
     var an = (G.cutNpc && (G.cutNpc.type === "anky" || G.cutNpc.species)) ? G.cutNpc : null;
     if (an) { lft = Math.min(lft, an.x); rgt = Math.max(rgt, an.x + an.w); }
+    if (G.cutNpc2) { lft = Math.min(lft, G.cutNpc2.x); rgt = Math.max(rgt, G.cutNpc2.x + G.cutNpc2.w); }
     var groupMid = (lft + rgt) / 2;
     return (scx * 0.6 + groupMid * 0.4) - VIEW_W * 0.5;
   }
@@ -5565,6 +5875,7 @@
     drawGiantMeat();
     drawDoor();
     if (G.cutNpc) drawCutNpc();
+    if (G.cutNpc2) drawCutNpc(G.cutNpc2);
     if (G.ally) drawAlly();
     drawFoes();
     if (G.spino) drawSpino();
@@ -5572,6 +5883,7 @@
     drawHazards();
     if (G._blastT > 0) drawBlastBeam(cx, cy);
     if (G._jesusT > 0) drawJesusDescent(cx, cy);
+    if (G._jesusReviveT > 0) drawJesusRevive(cx, cy);
     drawParticles();
     drawRemoteDinos();
     drawChar();
@@ -5968,6 +6280,25 @@
         ctx.strokeStyle = "rgba(255,110,50,.8)"; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(pl.x + pl.w * 0.3, pl.y + 10); ctx.lineTo(rcx - 4, rcy); ctx.lineTo(pl.x + pl.w * 0.4, pl.y + pl.h - 14); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(pl.x + pl.w * 0.7, pl.y + 2); ctx.lineTo(rcx + 6, rcy + 10); ctx.stroke();
+        // anticipation beat right before breakTrappedRock(): the embers flare into a bright,
+        // widening crack of light down the middle — telegraphs "this is about to go", same
+        // "crack before the split" device used for the L10 river parting
+        if (G._rockCrackT > 0) {
+          var crackP = 1 - G._rockCrackT / (G._rockCrackT0 || 40);
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, crackP * 1.4) * (0.65 + Math.sin(G.time * 20) * 0.35);
+          ctx.fillStyle = "#FFE7A6";
+          ctx.beginPath(); ctx.ellipse(rcx, rcy, 10 + crackP * 18, 26 + crackP * 30, 0, 0, 7); ctx.fill();
+          ctx.globalAlpha = Math.min(1, crackP * 1.6);
+          ctx.strokeStyle = "#FFF6D8"; ctx.lineWidth = 2 + crackP * 3; ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(rcx - 2, pl.y - 6);
+          ctx.lineTo(rcx + 4, pl.y + pl.h * 0.4);
+          ctx.lineTo(rcx - 6, pl.y + pl.h * 0.75);
+          ctx.lineTo(rcx + 2, pl.y + pl.h + 6);
+          ctx.stroke();
+          ctx.restore();
+        }
         ctx.restore();
         continue;
       }
@@ -6158,46 +6489,143 @@
     ctx.restore();
   }
   // L10: the static lava-river hazard. Fills the gap with molten lava until partRiver() fires, then
-  // visually recedes toward both banks over `partT` frames revealing the bridge underneath it.
+  // SLOWLY, majestically recedes toward both banks over `partDur` frames (~2.8s) — a glowing crack
+  // opens down the middle first, then the two halves roll apart with a bright rim-light facing the
+  // gap, steam rising between them, while a widening golden beam (synced with drawJesusDescent)
+  // pours down into the opening. Episch, not instant.
   function drawLavaRiver(cx, cy) {
     var r = G.level && G.level.river; if (!r) return;
-    var pull = r.crossed ? Math.max(0, Math.min(1, 1 - (r.partT || 0) / 60)) : 0;
-    if (r.crossed && pull >= 1) return;    // fully parted — the bridge speaks for itself
+    var dur = r.partDur || 170;
+    var raw = r.crossed ? Math.max(0, Math.min(1, 1 - (r.partT || 0) / dur)) : 0;
+    if (r.crossed && raw >= 1) return;    // fully parted — the bridge speaks for itself
     var gy = GROUND_Y;
-    var inset = pull * (r.w / 2 - 20);
+    // smoothstep ease — slow to start, fast through the middle, settles at the end: weightier
+    // than a linear slide, reads as something heavy actually being pulled apart
+    var pull = raw * raw * (3 - 2 * raw);
+    // the glow crack appears and brightens over the FIRST slice of the animation, before the
+    // banks have visibly moved at all — the moment right before the parting, not during it
+    var crackA = Math.max(0, Math.min(1, raw / 0.18));
+    var inset = pull * (r.w / 2 - 16);
     var lx = r.x + inset, rx = r.x + r.w - inset;
-    if (rx <= lx) return;
-    if (rx - cx < -60 || lx - cx > VIEW_W + 60) return;
+    var midX = r.x + r.w / 2;
+    if (rx - cx < -80 || lx - cx > VIEW_W + 80) return;
     ctx.save();
-    var grd = ctx.createLinearGradient(0, gy - 50, 0, gy + 80);
-    grd.addColorStop(0, "rgba(255,215,120,1)");
-    grd.addColorStop(0.3, "rgba(255,120,30,1)");
-    grd.addColorStop(1, "rgba(110,18,10,1)");
-    ctx.fillStyle = grd;
-    ctx.beginPath();
-    ctx.moveTo(lx, gy + 80);
-    for (var bx2 = lx; bx2 <= rx; bx2 += 10) {
-      var bump = Math.sin(bx2 * 0.06 + G.time * 4) * 6 + Math.sin(bx2 * 0.14 + G.time * 2.4) * 4;
-      ctx.lineTo(bx2, gy - 26 + bump);
+
+    // how much of the gap has actually opened so far (grows 0 -> r.w as pull goes 0 -> 1) —
+    // used below instead of the SHRINKING remaining-lava width (rx-lx), which would make the
+    // glow/mist shrink as the parting progresses instead of growing with it
+    var openW = Math.max(0, r.w - (rx - lx));
+
+    // wide golden glow filling the growing gap, strongest right at the parting edges
+    if (pull > 0.01) {
+      var glowW = Math.max(40, openW);
+      var glowGrd = ctx.createRadialGradient(midX, gy - 30, 0, midX, gy - 30, glowW * 0.9 + 60);
+      glowGrd.addColorStop(0, "rgba(255,250,225," + (0.55 * pull) + ")");
+      glowGrd.addColorStop(0.5, "rgba(255,190,90," + (0.3 * pull) + ")");
+      glowGrd.addColorStop(1, "rgba(255,190,90,0)");
+      ctx.fillStyle = glowGrd;
+      ctx.fillRect(midX - glowW - 60, gy - 300, (glowW + 60) * 2, 380);
     }
-    ctx.lineTo(rx, gy + 80);
-    ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = "rgba(255,140,40,.5)";
-    ctx.fillRect(lx - 20, gy - 66, (rx - lx) + 40, 46);
-    ctx.globalAlpha = 1;
+
+    // the two lava masses, each with the same bubbling top edge as before
+    function bank(fromX, toX) {
+      var grd = ctx.createLinearGradient(0, gy - 50, 0, gy + 80);
+      grd.addColorStop(0, "rgba(255,215,120,1)");
+      grd.addColorStop(0.3, "rgba(255,120,30,1)");
+      grd.addColorStop(1, "rgba(110,18,10,1)");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.moveTo(fromX, gy + 80);
+      var step = fromX < toX ? 10 : -10;
+      for (var bxp = fromX; step > 0 ? bxp <= toX : bxp >= toX; bxp += step) {
+        var bump = Math.sin(bxp * 0.06 + G.time * 4) * 6 + Math.sin(bxp * 0.14 + G.time * 2.4) * 4;
+        ctx.lineTo(bxp, gy - 26 + bump);
+      }
+      ctx.lineTo(toX, gy + 80);
+      ctx.closePath(); ctx.fill();
+    }
+    // CONFIRMED real bug, found this round: these two calls used to be bank(r.x-400, lx) and
+    // bank(r.x+r.w+400, rx) — a 400px OVERSCAN that painted solid, perfectly safe ground on BOTH
+    // sides of the actual gap as if it were molten lava (reported as "ich kann in die Lava
+    // rumlaufen" — the player wasn't in any lava at all, they were standing on normal ground that
+    // this bug was simply painting orange). The only lava that should ever be drawn is the
+    // SHRINKING island still remaining in the gap's middle, bounded exactly by [lx, rx] — nothing
+    // outside those two points is ever actually lava. Split into two halves here only for a touch
+    // of independent bubble texture, never extending past the real bounds.
+    bank(lx, midX);
+    bank(rx, midX);
+
+    // bright rim-light along each inner edge — grows with the parting, this is the "it's really
+    // tearing apart right here" read
+    if (pull > 0.01) {
+      var rimA = Math.min(1, pull * 2.2);
+      ctx.globalAlpha = rimA;
+      var rimGrd1 = ctx.createLinearGradient(lx - 22, 0, lx + 4, 0);
+      rimGrd1.addColorStop(0, "rgba(255,230,140,0)"); rimGrd1.addColorStop(1, "rgba(255,250,225,.95)");
+      ctx.fillStyle = rimGrd1; ctx.fillRect(lx - 22, gy - 70, 26, 150);
+      var rimGrd2 = ctx.createLinearGradient(rx - 4, 0, rx + 22, 0);
+      rimGrd2.addColorStop(0, "rgba(255,250,225,.95)"); rimGrd2.addColorStop(1, "rgba(255,230,140,0)");
+      ctx.fillStyle = rimGrd2; ctx.fillRect(rx - 4, gy - 70, 26, 150);
+      ctx.globalAlpha = 1;
+    }
+
+    // the glowing crack, right before the real split — a thin vertical seam of light
+    if (crackA > 0.01 && pull < 0.05) {
+      ctx.globalAlpha = crackA * (0.6 + Math.sin(G.time * 16) * 0.4);
+      ctx.fillStyle = "#FFF6D8";
+      ctx.fillRect(midX - 2, gy - 60, 4, 140);
+      ctx.globalAlpha = 1;
+    }
+
+    // mist/steam rising out of the widening gap
+    if (pull > 0.05) {
+      for (var s = 0; s < 6; s++) {
+        var scyc = (G.time * 26 + s * 31) % 90;
+        var sx = midX + Math.sin(s * 1.7) * Math.max(16, openW) * 0.4;   // rises from the OPENED area, not the shrinking remnant
+        var sy = gy - 20 - scyc * 2.1;
+        ctx.globalAlpha = Math.max(0, (1 - scyc / 90) * 0.3 * pull);
+        ctx.fillStyle = "#FFF2DC";
+        ctx.beginPath(); ctx.arc(sx, sy, 10 + scyc * 0.14, 0, 7); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   }
-  // L10: a simple descending robed figure with a halo, arms spread, inside a light beam — reads as
-  // "someone up there parted the lava for us" without needing a whole new sprite rig.
+  // L10: a descending robed figure with a halo, arms spread wide, inside a light beam that widens
+  // to track the river's parting gap — reads as "someone up there parted the lava for us", drawn
+  // out slowly rather than a quick flash so it actually lands as the dramatic beat it's meant to be.
   function drawJesusDescent(cx, cy) {
     if (!(G._jesusT > 0)) return;
     var r = G.level && G.level.river; if (!r) return;
     var bx = r.x + r.w / 2, gy = GROUND_Y;
-    var a = Math.min(1, G._jesusT / 70);
+    var dur = 210;
+    var t01 = 1 - Math.max(0, Math.min(1, G._jesusT / dur));
+    // fades in fast, holds bright through the parting, fades out gently at the very end
+    var a = t01 < 0.12 ? t01 / 0.12 : (t01 > 0.8 ? Math.max(0, (1 - t01) / 0.2) : 1);
+    var descend = Math.min(1, t01 / 0.35);       // settles into position over the first slice
     ctx.save();
     ctx.globalAlpha = a;
-    var fy = gy - 92 + Math.sin(G.time * 2) * 4;
+
+    // the beam widens as the river itself parts, so the two effects read as one event
+    var rr = G.level.river;
+    var gapW = rr.crossed ? Math.max(30, (rr.x + rr.w) - rr.x) * (1 - Math.max(0, (rr.partT || 0) / (rr.partDur || 170))) : 30;
+    var beamW = 50 + Math.min(120, gapW * 0.35);
+    var beamGrd = ctx.createLinearGradient(bx, 0, bx, gy);
+    beamGrd.addColorStop(0, "rgba(255,255,245,.95)");
+    beamGrd.addColorStop(0.7, "rgba(255,235,180,.35)");
+    beamGrd.addColorStop(1, "rgba(255,235,180,0)");
+    ctx.fillStyle = beamGrd;
+    ctx.fillRect(bx - beamW / 2, 0, beamW, gy - 10);
+    // a few thinner light rays fanning out for extra drama
+    ctx.globalAlpha = a * 0.5;
+    ctx.strokeStyle = "#FFF6D8"; ctx.lineWidth = 3;
+    for (var ray = -2; ray <= 2; ray++) {
+      if (ray === 0) continue;
+      ctx.beginPath(); ctx.moveTo(bx, 0); ctx.lineTo(bx + ray * 46, gy - 10); ctx.stroke();
+    }
+    ctx.globalAlpha = a;
+
+    var fy = gy - (92 - 50 * (1 - descend)) + Math.sin(G.time * 2) * 4;   // drifts down into place
     ctx.fillStyle = "rgba(255,250,235,.95)";
     ctx.beginPath();
     ctx.moveTo(bx, fy - 34);
@@ -6205,13 +6633,45 @@
     ctx.lineTo(bx + 24, fy + 28);
     ctx.closePath(); ctx.fill();
     ctx.beginPath(); ctx.arc(bx, fy - 40, 10, 0, 7); ctx.fill();
+    var armSpread = 0.4 + descend * 0.6;
     ctx.strokeStyle = "rgba(255,250,235,.95)"; ctx.lineWidth = 6; ctx.lineCap = "round";
     ctx.beginPath();
-    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx - 32, fy - 20);
-    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx + 32, fy - 20);
+    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx - 32 * armSpread, fy - 20);
+    ctx.moveTo(bx, fy - 8); ctx.lineTo(bx + 32 * armSpread, fy - 20);
     ctx.stroke();
     ctx.strokeStyle = "#FFE7A6"; ctx.lineWidth = 3;
+    ctx.globalAlpha = a * (0.7 + Math.sin(G.time * 6) * 0.3);
     ctx.beginPath(); ctx.ellipse(bx, fy - 52, 13, 5, 0, 0, 7); ctx.stroke();
+    ctx.restore();
+  }
+  // Jesus's own resurrection: a beam of light + a bright ground flash, anchored to wherever he
+  // fell (world-space, tracks the camera correctly), fading in fast and out slow.
+  function drawJesusRevive(cx, cy) {
+    var bx = G._jesusReviveX || 0, by = G._jesusReviveY || GROUND_Y;
+    if (bx - cx < -140 || bx - cx > VIEW_W + 140) return;
+    var dur = 130;
+    var t01 = 1 - Math.max(0, Math.min(1, G._jesusReviveT / dur));
+    var a = t01 < 0.1 ? t01 / 0.1 : (t01 > 0.7 ? Math.max(0, (1 - t01) / 0.3) : 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    var beamW = 90 + Math.sin(t01 * 9) * 6;
+    var beamGrd = ctx.createLinearGradient(bx, by - 420, bx, by + 6);
+    beamGrd.addColorStop(0, "rgba(255,255,245,0)");
+    beamGrd.addColorStop(0.55, "rgba(255,250,225,.5)");
+    beamGrd.addColorStop(1, "rgba(255,255,255,.95)");
+    ctx.fillStyle = beamGrd;
+    ctx.fillRect(bx - beamW / 2, by - 420, beamW, 426);
+    var flashR = 70 + Math.sin(t01 * 14) * 10;
+    var coreGrd = ctx.createRadialGradient(bx, by - 16, 0, bx, by - 16, flashR);
+    coreGrd.addColorStop(0, "rgba(255,255,250,.9)");
+    coreGrd.addColorStop(0.6, "rgba(255,230,160,.4)");
+    coreGrd.addColorStop(1, "rgba(255,230,160,0)");
+    ctx.fillStyle = coreGrd;
+    ctx.beginPath(); ctx.arc(bx, by - 16, flashR, 0, 7); ctx.fill();
+    var ringR = 10 + t01 * 130;
+    ctx.strokeStyle = "rgba(255,245,210," + Math.max(0, 0.6 * (1 - t01)) + ")";
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(bx, by, ringR, ringR * 0.3, 0, 0, 7); ctx.stroke();
     ctx.restore();
   }
   // a leafy frond — the snack for a plant-eating player
@@ -6230,6 +6690,21 @@
       ctx.beginPath(); ctx.ellipse(w / 2 + 1, k, w, 2.6, 0.5, 0, 7); ctx.fill();
     }
     ctx.fillStyle = "#7DC85C"; ctx.beginPath(); ctx.ellipse(0, -12, 4, 6, 0, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+  // a small Bible — Jesus's snack, standing in for the meat drumstick / fern
+  function drawBible(t) {
+    ctx.save();
+    ctx.rotate(Math.sin(t * 1.5) * 0.1);
+    ctx.globalAlpha = 0.24 + Math.sin(t * 2) * 0.06;
+    ctx.fillStyle = "#E7C468"; ctx.beginPath(); ctx.arc(0, 0, 14, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#7A2E22"; rr(-9, -11, 18, 22, 2); ctx.fill();
+    ctx.fillStyle = "#F3EADA"; ctx.fillRect(-7, -9, 2, 18);
+    ctx.fillStyle = "#8A382A"; rr(-7, -10, 14, 20, 2); ctx.fill();
+    ctx.fillStyle = "#E7C468";
+    ctx.fillRect(-1.1, -6, 2.2, 12);
+    ctx.fillRect(-4, -1.1, 8, 2.2);
     ctx.restore();
   }
   // co-op team gates: stone doors, pressure plates, a lever, a stepping-stone bridge
@@ -6334,13 +6809,14 @@
   }
   function drawCollectibles() {
     var L = G.level;
-    var herb = herbPlayer();
+    var herb = herbPlayer(), jesus = jesusPlayer();
     for (var i = 0; i < L.meats.length; i++) {
       var m = L.meats[i];
       if (m.taken || m.x - cxCache > VIEW_W + 40 || m.x - cxCache < -40) continue;
       var by = m.y + Math.sin(m.t) * 3;
       ctx.save(); ctx.translate(m.x, by);
       if (herb) { drawFrond(m.t); ctx.restore(); continue; }
+      if (jesus) { drawBible(m.t); ctx.restore(); continue; }
       ctx.globalAlpha = 0.26 + Math.sin(m.t * 2) * 0.06;
       ctx.fillStyle = "#F6C86B"; ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
@@ -6550,7 +7026,7 @@
   // the fast-hitting Anky boss fight. Cutscenes / KO / ghost / remote never flash.
   function invulnGhost(p) {
     if (!p || p._remote || p.koT > 0 || p.dead || p.ghost || p._ghostRemote) return 1;
-    if (G.state === "opening" || G.state === "outro" || G.state === "river") return 1;
+    if (G.state === "opening" || G.state === "outro" || G.state === "river" || G.state === "introWait") return 1;
     if (p.invuln > 0 && p.invuln < 130) return (Math.floor(p.invuln / 4) % 2 === 0) ? 0.34 : 0.9;
     return 1;
   }
@@ -6856,8 +7332,8 @@
   }
 
   // an NPC in a cutscene (Langi, caged or free)
-  function drawCutNpc() {
-    var n = G.cutNpc; if (!n) return;
+  function drawCutNpc(npc) {
+    var n = npc || G.cutNpc; if (!n) return;
     var t = n.t || 0;
     if (n.species) {
       // a generic stand-in companion (any of the 4 playable species) — reuse the REAL playable-
@@ -7605,6 +8081,8 @@
         updateOpening();
       } else if (G.state === "river") {
         updateRiverScene();
+      } else if (G.state === "introWait") {
+        updateIntroWait();
       } else {
         fx();
       }
@@ -7640,7 +8118,7 @@
     // co-op sync
     if (NET.on) {
       // rebuild the peer table only when something changed (coalesced), plus a slow safety poll
-      var inLvl = (G.state === "play" || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "river");
+      var inLvl = (G.state === "play" || G.state === "boss" || G.state === "outro" || G.state === "opening" || G.state === "river" || G.state === "introWait");
       var scanEvery = (NET.role === "screen") ? (inLvl ? 3 : 6) : 3;
       if ((NET._peersDirty && menuT % scanEvery === 0) || menuT % 45 === 0) { NET._peersDirty = false; netScanPeers(); }
       netMergeWorld();
